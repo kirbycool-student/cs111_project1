@@ -26,21 +26,27 @@ make_command_stream (int (*get_next_byte) (void *),
 
     command_t prev_command;
     char next_byte;
+    enum command_type type;
 
     for ( next_byte = get_next_byte(get_next_byte_argument); next_byte != EOF; next_byte = get_next_byte(get_next_byte_argument))
     {
         if (next_byte == ' ')
+		{
             continue;
+		}
         else if (next_byte == '(')
+		{
             prev_command = add_command_subshell(get_next_byte, get_next_byte_argument);
-        else if (next_byte == '|' )
+		}
+    	else if (next_byte == '|' )
         {
-            enum command_type type;          //look at next byte for or command, if not command is pipe
             fpos_t pos;
-            fgetpos(get_next_byte_argument, &pos);
+            fgetpos(get_next_byte_argument, &pos);	//look at next byte for OR command, if not command is pipe
             next_byte = get_next_byte(get_next_byte_argument);
             if (next_byte == '|')
+			{
                 type = OR_COMMAND;
+			}
             else
             {
                 type = PIPE_COMMAND;
@@ -49,20 +55,21 @@ make_command_stream (int (*get_next_byte) (void *),
             prev_command = add_command_normal(get_next_byte, get_next_byte_argument, type, prev_command);
         }
         else if (next_byte == '&')
-        {
-            enum command_type type;          //look at next byte for or command, if not command is pipe
-            next_byte = get_next_byte(get_next_byte_argument);
+        {  
+            next_byte = get_next_byte(get_next_byte_argument); //look at next byte for or command, if not command is pipe
             if (next_byte == '&')
+			{
                 type = AND_COMMAND;
-            else
+			}            
+			else
             {
                 //TODO: some error
             }
             prev_command = add_command_normal(get_next_byte, get_next_byte_argument, type, prev_command);
         }
-        else if (next_byte == ';')
+        else if (next_byte == ';')	// will need more cases for other character types... ex: #, * etc
         {
-            enum command_type type = SEQUENCE_COMMAND;
+            type = SEQUENCE_COMMAND;
             prev_command = add_command_normal(get_next_byte, get_next_byte_argument, type, prev_command); 
         }
     }
