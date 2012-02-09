@@ -182,6 +182,8 @@ make_command_stream (int (*get_next_byte) (void *),
             type = SEQUENCE_COMMAND;
             prev_command = add_command_normal(get_next_byte, get_next_byte_argument, type, prev_command); 
         }
+
+	// write function for determining if character is in set of possible chars for word
     }
 
   error (1, 0, "command reading not yet implemented");
