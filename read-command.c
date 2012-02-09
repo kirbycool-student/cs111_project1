@@ -41,6 +41,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
     return command;
 }
 
+//todo: factor our enum again...
         
 command_t add_command_subshell( int (*get_next_byte) (void *), void *stream)
 {
