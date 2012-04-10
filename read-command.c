@@ -13,7 +13,7 @@
    static function definitions, etc.  */
 
 command_t add_command_normal( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command);
-command_t add_command_subshell( int (*get_next_byte) (void *), void *stream);
+command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int subshell);
 command_t add_command_simple( int (*get_next_byte) (void *), void *stream);
 
 command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
@@ -43,7 +43,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
 
 //todo: factor our enum again...
         
-command_t add_command_subshell( int (*get_next_byte) (void *), void *stream)
+command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int subshell)
 {
     command_t prev_command;
     char next_byte;
@@ -54,9 +54,19 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream)
         if (next_byte == ' ')
             continue;
         else if (next_byte == ')')
-            break;
+        {
+            if (subshell)
+            {
+                break;
+            }
+            else
+            {
+                ;
+            }
+                //TODO: some error
+        }
         else if (next_byte == '(')
-            prev_command = add_command_subshell(get_next_byte, stream);
+            prev_command = add_command_subshell(get_next_byte, stream, 1);
         else if (next_byte == '|' )
         {
             //look at next byte for or command, if not command is pipe
@@ -117,8 +127,15 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream)
             prev_command = add_command_normal(get_next_byte, stream, type, prev_command); 
         }
     }
-
-    return prev_command;
+    if ( subshell )
+    {
+        command_t command = malloc( sizeof(struct command) );
+        command->type = SUBSHELL_COMMAND;
+        command->u.subshell_command = prev_command;
+        return command;
+    }
+    else
+        return prev_command;
 }
 
 
@@ -136,7 +153,7 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
             continue;
         else if (next_byte == '(')
         {
-            command->u.command[1] = add_command_subshell(get_next_byte, stream);
+            command->u.command[1] = add_command_subshell(get_next_byte, stream, 1);
             break;
         }
         else
@@ -155,6 +172,11 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
 /* FIXME: Define the type 'struct command_stream' here.  This should
    complete the incomplete type declaration in command.h.  */
 
+struct command_stream
+{
+    command_t head;
+};
+
 command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
 		     void *get_next_byte_argument)
@@ -162,87 +184,18 @@ make_command_stream (int (*get_next_byte) (void *),
   /* FIXME: Replace this with your implementation.  You may need to
      add auxiliary functions and otherwise modify the source code.
      You can also use external functions defined in the GNU C Library.  */
+    command_stream_t command_stream = malloc( sizeof(command_stream) );
+    
+    command_t head_command = malloc( sizeof(struct command) );
+    head_command = add_command_subshell(get_next_byte, get_next_byte_argument, 0);
+    command_stream->head = head_command;
 
-    command_t prev_command;
-    char next_byte;
-    enum command_type type;
+    return command_stream;
 
-    for ( next_byte = get_next_byte(get_next_byte_argument); next_byte != EOF; next_byte = get_next_byte(get_next_byte_argument))
-    {
-        if (next_byte == ' ')
-		{
-            continue;
-		}
-        else if (next_byte == '(')
-		{
-            prev_command = add_command_subshell(get_next_byte, get_next_byte_argument);
-		}
-    	else if (next_byte == '|' )
-        {
-            fpos_t pos;
-            fgetpos(get_next_byte_argument, &pos);	//look at next byte for OR command, if not command is pipe
-            next_byte = get_next_byte(get_next_byte_argument);
-            if (next_byte == '|')
-			{
-                type = OR_COMMAND;
-			}
-            else
-            {
-                type = PIPE_COMMAND;
-                fsetpos(get_next_byte_argument, &pos);   //move the file pointer back
-            }
-            prev_command = add_command_normal(get_next_byte, get_next_byte_argument, type, prev_command);
-        }
-        else if (next_byte == '&')
-        {  
-            next_byte = get_next_byte(get_next_byte_argument); //look at next byte for or command, if not command is pipe
-            if (next_byte == '&')
-			{
-                type = AND_COMMAND;
-			}            
-			else
-            {
-                //TODO: some error
-            }
-            prev_command = add_command_normal(get_next_byte, get_next_byte_argument, type, prev_command);
-        }
-        else if (next_byte == '\n')
-        {
-            fpos_t pos;
-            fgetpos(get_next_byte_argument, &pos);
-            for (next_byte = get_next_byte(get_next_byte_argument); next_byte != EOF; next_byte = get_next_byte(get_next_byte_argument))
-            {
-                if (next_byte == ' ' || next_byte == '\n')
-                {
-                    continue;
-                }
-                else
-                {
-                    break;
-                }
-            }
-            if(next_byte == '|' || next_byte == '&' || next_byte == ';' || next_byte == '<' || next_byte == '>')
-            {
-                //TODO: some error
-            }
-            else
-            {
-                type = SEQUENCE_COMMAND;
-                prev_command = add_command_normal(get_next_byte, get_next_byte_argument, type, prev_command);
-            }
-            fsetpos(get_next_byte_argument, &pos);
-        }
-        else if (next_byte == ';')	// will need more cases for other character types... ex: #, * etc
-        {
-            type = SEQUENCE_COMMAND;
-            prev_command = add_command_normal(get_next_byte, get_next_byte_argument, type, prev_command); 
-        }
+    	// write function for determining if character is in set of possible chars for word
 
-	// write function for determining if character is in set of possible chars for word
-    }
-
-  error (1, 0, "command reading not yet implemented");
-  return 0;
+  //error (1, 0, "command reading not yet implemented");
+  //return 0;
 }
 
 command_t
