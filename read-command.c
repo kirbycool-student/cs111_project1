@@ -82,6 +82,28 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream)
             }
             prev_command = add_command_normal(get_next_byte, stream, type, prev_command);
         }
+        else if (next_byte == '\n')
+        {
+            fpos_t pos;
+            fgetpos(stream, &pos);
+            for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get(next_byte(stream))
+            {
+                if (next_byte == ' ' || next_byte == '\n')
+                {
+                    continue;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            if(next_byte == '|' || next_byte == '&' || next_byte == ';' || next_byte == '<' || next_byte == '>')
+            {
+                //TODO: somee error
+            }
+            else
+            {
+
         else if (next_byte == ';')
         {
             enum command_type type = SEQUENCE_COMMAND;
