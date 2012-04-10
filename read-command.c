@@ -98,6 +98,26 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
 {
     command_t command = malloc(sizeof(struct command));
     command->type = type;
+    command->u.command[0] = prev_command;
+
+    char next_byte;
+    for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
+    {
+        if (next_byte == ' ')
+            continue;
+        else if (next_byte == '(')
+        {
+            command->u.command[1] = add_command_subshell(get_next_byte, stream);
+            break;
+        }
+        else
+        {
+            command->u.command[1] = add_command_simple(get_next_byte, stream);
+            break;
+        }
+    }
+
+    
     return command;
 }
     
