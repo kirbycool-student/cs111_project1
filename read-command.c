@@ -6,6 +6,8 @@
 #include <error.h>
 
 #include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
 
 /* FIXME: You may need to add #include directives, macro definitions,
    static function definitions, etc.  */
@@ -13,6 +15,94 @@
 command_t add_command_normal( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command);
 command_t add_command_subshell( int (*get_next_byte) (void *), void *stream);
 command_t add_command_simple( int (*get_next_byte) (void *), void *stream);
+
+command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
+{
+    command_t command = malloc(sizeof(struct command));
+    command->type = SIMPLE_COMMAND;
+
+    char* word = malloc( sizeof(char) * 1024);      //TODO: implement dynamic resizing string
+    char next_byte;
+    fpos_t pos;
+    fgetpos(stream, &pos);
+    for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
+    {
+        if ( next_byte =='|' || next_byte == '&' || next_byte == ';')
+        {    
+            fsetpos(stream, &pos);
+            break;
+        }
+        else
+            strcat(word, &next_byte);           //TODO: resize if array too short
+    }
+
+    command->u.word = &word;
+
+    return command;
+}
+
+        
+command_t add_command_subshell( int (*get_next_byte) (void *), void *stream)
+{
+    command_t prev_command;
+    char next_byte;
+
+    for ( next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
+    {
+        if (next_byte == ' ')
+            continue;
+        else if (next_byte == ')')
+            break;
+        else if (next_byte == '(')
+            prev_command = add_command_subshell(get_next_byte, stream);
+        else if (next_byte == '|' )
+        {
+            enum command_type type;          //look at next byte for or command, if not command is pipe
+            fpos_t pos;
+            fgetpos(stream, &pos);
+            next_byte = get_next_byte(stream);
+            if (next_byte == '|')
+                type = OR_COMMAND;
+            else
+            {
+                type = PIPE_COMMAND;
+                fsetpos(stream, &pos);   //move the file pointer back
+            }
+            prev_command = add_command_normal(get_next_byte, stream, type, prev_command);
+        }
+        else if (next_byte == '&')
+        {
+            enum command_type type;          //look at next byte for or command, if not command is pipe
+            next_byte = get_next_byte(stream);
+            if (next_byte == '&')
+                type = AND_COMMAND;
+            else
+            {
+                //TODO: some error
+            }
+            prev_command = add_command_normal(get_next_byte, stream, type, prev_command);
+        }
+        else if (next_byte == ';')
+        {
+            enum command_type type = SEQUENCE_COMMAND;
+            prev_command = add_command_normal(get_next_byte, stream, type, prev_command); 
+        }
+    }
+
+    return prev_command;
+}
+
+
+
+command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command)
+{
+    command_t command = malloc(sizeof(struct command));
+    command->type = type;
+    return command;
+}
+    
+
+
 /* FIXME: Define the type 'struct command_stream' here.  This should
    complete the incomplete type declaration in command.h.  */
 
