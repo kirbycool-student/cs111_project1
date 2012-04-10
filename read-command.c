@@ -24,7 +24,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream);
 
 bool is_word_char( char c )    //checks if c is in the subset of command word characters
 {
-    if( isalpha(c) || isdigit(c) )
+    if( isalnum(c) )    //alphanumeric == letter or digits
     {
         return true;
     }
@@ -177,7 +177,7 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
     char next_byte;
     for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
     {
-        if (next_byte == ' ')
+        if (next_byte == ' ')   //TODO: again, whitespace is more complex
         {
             continue;
         }
@@ -201,9 +201,12 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
 }
     
 
-
 /* FIXME: Define the type 'struct command_stream' here.  This should
    complete the incomplete type declaration in command.h.  */
+struct command_stream
+{
+    command_t head;
+};
 
 command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_next_byte_argument)
 {
@@ -218,7 +221,7 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
 
     for ( next_byte = get_next_byte(get_next_byte_argument); next_byte != EOF; next_byte = get_next_byte(get_next_byte_argument))
     {
-        if (next_byte == ' ')    //TODO:spaces between words?
+        if (next_byte == ' ' || next_byte == '\t')    //TODO:whitespace after words indicates end of word
         {
             continue;
         }
@@ -262,7 +265,7 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
             fgetpos(get_next_byte_argument, &pos);
             for (next_byte = get_next_byte(get_next_byte_argument); next_byte != EOF; next_byte = get_next_byte(get_next_byte_argument))
             {
-                if (next_byte == ' ' || next_byte == '\n')
+                if (next_byte == ' ' || next_byte == '\n')  //TODO tabs?
                 {
                     continue;
                 }
@@ -271,7 +274,7 @@ command_stream_t make_command_stream (int (*get_next_byte) (void *), void *get_n
                     break;
                 }
             }
-            if(next_byte == '|' || next_byte == '&' || next_byte == ';' || next_byte == '<' || next_byte == '>') //TODO: shouldn't io be ok?
+            if(next_byte == '|' || next_byte == '&' || next_byte == ';' || next_byte == '<' || next_byte == '>') //TODO: shouldn't I/O be ok?
             {
                 //maybe use is_word_char(next_byte) in condition?
                 //TODO: some error
@@ -298,6 +301,9 @@ command_t read_command_stream (command_stream_t s)
 {
   /* FIXME: Replace this with your implementation too.  
             implementation will be depth first post-order traversal of command tree*/
+
+
+
   error (1, 0, "command reading not yet implemented");
   return 0;
 }
