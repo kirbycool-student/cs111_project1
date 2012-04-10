@@ -46,6 +46,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream)
 {
     command_t prev_command;
     char next_byte;
+    enum command_type type;
 
     for ( next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
     {
@@ -57,7 +58,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream)
             prev_command = add_command_subshell(get_next_byte, stream);
         else if (next_byte == '|' )
         {
-            enum command_type type;          //look at next byte for or command, if not command is pipe
+            //look at next byte for or command, if not command is pipe
             fpos_t pos;
             fgetpos(stream, &pos);
             next_byte = get_next_byte(stream);
@@ -72,7 +73,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream)
         }
         else if (next_byte == '&')
         {
-            enum command_type type;          //look at next byte for or command, if not command is pipe
+            //look at next byte for or command, if not command is pipe
             next_byte = get_next_byte(stream);
             if (next_byte == '&')
                 type = AND_COMMAND;
@@ -86,7 +87,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream)
         {
             fpos_t pos;
             fgetpos(stream, &pos);
-            for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get(next_byte(stream))
+            for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
             {
                 if (next_byte == ' ' || next_byte == '\n')
                 {
@@ -99,14 +100,19 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream)
             }
             if(next_byte == '|' || next_byte == '&' || next_byte == ';' || next_byte == '<' || next_byte == '>')
             {
-                //TODO: somee error
+                //TODO: some error
             }
             else
             {
+                type = SEQUENCE_COMMAND;
+                prev_command = add_command_normal(get_next_byte, stream, type, prev_command);
+            }
+            fsetpos(stream, &pos);
+        }
 
         else if (next_byte == ';')
         {
-            enum command_type type = SEQUENCE_COMMAND;
+            type = SEQUENCE_COMMAND;
             prev_command = add_command_normal(get_next_byte, stream, type, prev_command); 
         }
     }
@@ -198,6 +204,32 @@ make_command_stream (int (*get_next_byte) (void *),
                 //TODO: some error
             }
             prev_command = add_command_normal(get_next_byte, get_next_byte_argument, type, prev_command);
+        }
+        else if (next_byte == '\n')
+        {
+            fpos_t pos;
+            fgetpos(get_next_byte_argument, &pos);
+            for (next_byte = get_next_byte(get_next_byte_argument); next_byte != EOF; next_byte = get_next_byte(get_next_byte_argument))
+            {
+                if (next_byte == ' ' || next_byte == '\n')
+                {
+                    continue;
+                }
+                else
+                {
+                    break;
+                }
+            }
+            if(next_byte == '|' || next_byte == '&' || next_byte == ';' || next_byte == '<' || next_byte == '>')
+            {
+                //TODO: some error
+            }
+            else
+            {
+                type = SEQUENCE_COMMAND;
+                prev_command = add_command_normal(get_next_byte, get_next_byte_argument, type, prev_command);
+            }
+            fsetpos(get_next_byte_argument, &pos);
         }
         else if (next_byte == ';')	// will need more cases for other character types... ex: #, * etc
         {
