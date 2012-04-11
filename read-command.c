@@ -91,6 +91,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
         if ( next_byte == '#')
         {
             next_byte = skip_comment(get_next_byte, stream);
+            fgetpos(stream, &pos);
             if (next_byte == EOF)
                 break;
         }
@@ -111,7 +112,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
             {
                 error_line_number++;
             }
-            if ( end_word_flag) 
+            if ( strlen( word ) != 0) 
             {
                 if (output_flag)
                 {
@@ -224,14 +225,17 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
     prev_command->type = 999;
     char next_byte;
     enum command_type type;
+    fpos_t pos;
 
     for ( next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
     {
         if(next_byte == '#')
         {
             next_byte = skip_comment( get_next_byte, stream );
+            fgetpos( stream, &pos);
             if (next_byte == EOF)
             {
+                fseek( stream, -1, 1);
                 break;
             }
         }
@@ -258,7 +262,6 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
         else if (next_byte == '|' )
         {
             //look at next byte for or command, if not command is pipe
-            fpos_t pos;
             fgetpos(stream, &pos);
             next_byte = get_next_byte(stream);
             if (next_byte == '|')
@@ -290,13 +293,18 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
         else if (next_byte == '\n')
         {
             error_line_number++;
-            fpos_t pos;
             fgetpos(stream, &pos);
             for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
             {
                 if (next_byte == '#')
                 {
-                    next_byte = skip_comment(get_next_byte, stream);
+                    next_byte = skip_comment( get_next_byte, stream );
+                    fgetpos( stream, &pos);
+                    if (next_byte == EOF)
+                    {
+                        fseek( stream, -1, 1);
+                        break;
+                    }
                 }
                 if (next_byte == ' ' || next_byte == '\t')
                 {
@@ -320,12 +328,17 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
             }
             else
             {
+                fsetpos( stream, &pos );
                 if (prev_command->type == 999)
-                    continue;
-                type = SEQUENCE_COMMAND;
-                prev_command = add_command_normal(get_next_byte, stream, type, prev_command);
+                {
+                    prev_command = add_command_simple(get_next_byte, stream);
+                }
+                else
+                {
+                    type = SEQUENCE_COMMAND;
+                    prev_command = add_command_normal(get_next_byte, stream, type, prev_command);
+                }
             }
-            fsetpos(stream, &pos);
         }
         else if (next_byte == ';')  //TODO: optional semicolon for statements
         {
@@ -334,6 +347,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
         }
         else if ( is_word_char(next_byte) )
         {
+            fsetpos( stream, &pos );
             prev_command = add_command_simple(get_next_byte, stream);
         }
         else    //some strange character  error
@@ -367,14 +381,20 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
     command->type = type;
     command->u.command[0] = prev_command;
 
+    fpos_t pos;
+
     char next_byte;
     for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
     {
         if ( next_byte == '#')
         {
             next_byte = skip_comment(get_next_byte, stream);
+            fgetpos( stream, &pos);
             if (next_byte == EOF)
+            {
+                fseek( stream, -1, 1);
                 break;
+            }
         }
         if (next_byte == ' ' || next_byte == '\t')
         {
@@ -382,11 +402,13 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
         }
         else if (next_byte == '(')
         {
+            fsetpos( stream, &pos);
             command->u.command[1] = add_command_subshell(get_next_byte, stream, 1);
             break;
         }
         else if ( is_word_char(next_byte) )
         {
+            fsetpos( stream, &pos);
             command->u.command[1] = add_command_simple(get_next_byte, stream);
             break;
         }
