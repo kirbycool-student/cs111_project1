@@ -19,7 +19,7 @@ command_t add_command_normal( int (*get_next_byte) (void *), void *stream, enum 
 
 /////////////       GLOBAL VARIABLES     /////////////
 
-int error_line_number = 1;
+int error_line_number;  //for outputing the error line number
 
 /////////////       FUNCTION DEFINITIONS     /////////////
 
