@@ -50,7 +50,10 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
     fgetpos(stream, &pos);
     
     //TODO: implement I/O
-            // change word implementation
+    // change word implementation
+    
+    bool input_flag = false;
+    bool output_flag = false;
 
     for ( next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream) )
     {
@@ -58,6 +61,30 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
         {    
             fsetpos(stream, &pos);
             break;
+        }
+        else if ( next_byte == '<' )
+        {
+            if ( input_flag == true )
+            {
+                ; //TODO: some error input has already occured
+            }
+            char* input = malloc( sizeof(char) * strlen(word) );
+            strcpy( input, word );
+            command->input = input;
+            word[0] = '\0';
+            input_flag = false;
+        }
+        else if ( next_byte == '>' )
+        {
+            if ( output_flag == true )
+            {
+                ; //TODO: some error output has already occured
+            }
+            char* command_word = malloc( sizeof(char) * strlen(word) );
+            strcpy( command_word, word ); 
+            command->u.word = &command_word;
+            word[0] = '\0';
+            output_flag = true;
         }
         else if ( is_word_char(next_byte) )
         {
@@ -68,8 +95,14 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
             //TODO: error
         }
     }
-
-    command->u.word = &word;    //TODO i dont think this works. u.word is (char **word) so we should have pointers to individual words, each ending with '\0'
+    if ( output_flag == true )
+    {
+        command->output = word;
+    }
+    else
+    {
+        command->u.word = &word;
+    }
     return command;
 }    
         
