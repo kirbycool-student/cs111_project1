@@ -47,8 +47,12 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
 {
     command_t command = malloc(sizeof(struct command));
     command->type = SIMPLE_COMMAND;
-
-    char* word = malloc( sizeof(char) * 1024);      //TODO: implement dynamic resizing string
+    
+    int number_words = 5;
+    int word_size = 20;
+    int words_index = 0;
+    char** words = (char**) malloc( sizeof(char*) * number_words );      //TODO: implement dynamic resizing string
+    char* word = malloc( sizeof(char) * word_size);
     char next_byte;
     fpos_t pos;
     fgetpos(stream, &pos);
@@ -58,25 +62,51 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
     
     bool input_flag = false;
     bool output_flag = false;
-
+    bool end_word_flag = false;
+    
     for ( next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream) )
     {
-        if ( next_byte =='|' || next_byte == '&' || next_byte == ';')
-        {    
+        if ( next_byte == ' ' || next_byte == '\t' )        //word ended
+        {
+            if ( strlen(word) == 0 || end_word_flag)
+            {
+                continue;
+            }
+            else
+            {
+                end_word_flag = true;
+            }
+        }
+        else if ( next_byte =='|' || next_byte == '&' || next_byte == ';' || next_byte == '\n')
+        {   
+            if ( end_word_flag) 
+            {
+                if (output_flag)
+                {
+                    command->output = word;
+                }
+                else if (input_flag)
+                {
+                    command->input = word;
+                }
+                else
+                {
+                    words[words_index] = word;
+                }
+            }
             fsetpos(stream, &pos);
             break;
         }
         else if ( next_byte == '<' )
         {
-            if ( input_flag == true )
+            if ( input_flag == true || output_flag == true)
             {
                 ; //TODO: some error input has already occured
             }
-            char* input = malloc( sizeof(char) * strlen(word) );
-            strcpy( input, word );
-            command->input = input;
+            command->u.word = words;
             word[0] = '\0';
             input_flag = false;
+            end_word_flag = false;
         }
         else if ( next_byte == '>' )
         {
@@ -84,20 +114,49 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
             {
                 ; //TODO: some error output has already occured
             }
-            char* command_word = malloc( sizeof(char) * strlen(word) );
-            strcpy( command_word, word ); 
-            command->u.word = &command_word;
+            if ( !input_flag )
+            {
+                command->u.word = words;
+            }
+            else
+            {
+                ; //TODO: some error
+            }
             word[0] = '\0';
             output_flag = true;
+            end_word_flag = false;
         }
         else if ( is_word_char(next_byte) )
         {
-            strcat(word, &next_byte);           //TODO: resize if array too short
+            if (end_word_flag)
+            {
+                if ( output_flag || input_flag )
+                {
+                    //TODO: some error. there is more than one word after an I/O token;
+                }
+                if ( words_index == (number_words-1) )           //resize
+                {
+                    number_words *= 2;
+                    words = realloc( words, sizeof(char*) * number_words );
+                }
+                words[words_index] = word;
+                word[0] = '\0';                 //rest stuff for the next word
+                words_index++;
+                word_size = 20;
+                end_word_flag = false;
+            }
+            //TODO: resize if array too short
+            if ( (int) strlen( words[words_index] ) == word_size-1)    //resize word
+            {
+                words[words_index] = realloc( words[words_index], sizeof(char*) * word_size );
+            }
+            strcat(words[words_index], &next_byte);                       
         }
         else
         { 
             //TODO: error
         }
+
     }
     if ( output_flag == true )
     {
