@@ -206,6 +206,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
                 }
                 else if(byte == '\n')
                 {
+                    error_line_number++;
                     break;
                 }
             }
