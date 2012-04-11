@@ -384,6 +384,7 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
     fpos_t pos;
 
     char next_byte;
+    fgetpos( stream, &pos);
     for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
     {
         if ( next_byte == '#')
@@ -418,6 +419,8 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
             fprintf(stderr,"%d: Normal command not followed by simple command or subshell command.\n", error_line_number);
             exit(1);
         }
+
+        fgetpos( stream, &pos );
     }
     return command;
 }
