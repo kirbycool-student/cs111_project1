@@ -102,7 +102,9 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
                 //TODO: some error
         }
         else if (next_byte == '(')
+        {
             prev_command = add_command_subshell(get_next_byte, stream, 1);
+        }
         else if (next_byte == '|' )
         {
             //look at next byte for or command, if not command is pipe
@@ -140,7 +142,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
             fgetpos(stream, &pos);
             for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
             {
-                if (next_byte == ' ' || next_byte == '\n')
+                if (next_byte == ' ' || next_byte == '\t' || next_byte == '\n')
                 {
                     continue;
                 }
@@ -149,7 +151,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
                     break;
                 }
             }
-            if(next_byte == '|' || next_byte == '&' || next_byte == ';' || next_byte == '<' || next_byte == '>')
+            if( ! isspace(next_byte) && ! is_word_char(next_byte))
             {
                 //TODO: some error
             }
