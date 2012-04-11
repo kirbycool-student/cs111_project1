@@ -170,12 +170,18 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
         }
         else if (next_byte == '\n')
         {
+            error_line_number++;
             fpos_t pos;
             fgetpos(stream, &pos);
             for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
             {
-                if (next_byte == ' ' || next_byte == '\t' || next_byte == '\n')
+                if (next_byte == ' ' || next_byte == '\t' )
                 {
+                    continue;
+                }
+                else if ( next_byte == '\n' )
+                {
+                    error_line_number++;
                     continue;
                 }
                 else
