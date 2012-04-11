@@ -255,9 +255,6 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
     return command;
 }
     
-
-/* FIXME: Define the type 'struct command_stream' here.  This should
-   complete the incomplete type declaration in command.h.  */
 struct command_stream
 {
     command_t head;
@@ -267,11 +264,6 @@ command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
 		     void *get_next_byte_argument)
 {
-
-  /* FIXME: Replace this with your implementation.  You may need to
-     add auxiliary functions and otherwise modify the source code.
-     You can also use external functions defined in the GNU C Library.  */
-
     command_stream_t command_stream = malloc( sizeof(command_stream) );
     
     command_t head_command = malloc( sizeof(struct command) );
@@ -279,17 +271,9 @@ make_command_stream (int (*get_next_byte) (void *),
     command_stream->head = head_command;
 
     return command_stream;
-
-  //error (1, 0, "command reading not yet implemented");
-  //return 0;
 }
 
 command_t read_command_stream (command_stream_t s)
 {
-  /* FIXME: Replace this with your implementation too.  */
-
-
-
-  error (1, 0, "command reading not yet implemented");
-  return 0;
+    return s->head;
 }
