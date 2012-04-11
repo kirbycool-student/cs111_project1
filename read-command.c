@@ -73,7 +73,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
         }
     }
 
-    command->u.word = &word;    //TODO i dont think this works. u.word is (char **word) so we should have pointers to individual words, each ending with '\0'
+    command->u.word = &word;   
     return command;
 }    
         
@@ -85,7 +85,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
 
     for ( next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
     {
-        if (next_byte == ' ')
+        if (next_byte == ' ' || next_byte == '\t')
         {
             continue;
         }
@@ -228,15 +228,14 @@ make_command_stream (int (*get_next_byte) (void *),
   /* FIXME: Replace this with your implementation.  You may need to
      add auxiliary functions and otherwise modify the source code.
      You can also use external functions defined in the GNU C Library.  */
+
     command_stream_t command_stream = malloc( sizeof(command_stream) );
     
     command_t head_command = malloc( sizeof(struct command) );
-    head_command = add_command_subshell(get_next_byte, get_next_byte_argument, 0);
+    head_command = add_command_subshell(get_next_byte, get_next_byte_argument, false);
     command_stream->head = head_command;
 
     return command_stream;
-
-    	// write function for determining if character is in set of possible chars for word
 
   //error (1, 0, "command reading not yet implemented");
   //return 0;
@@ -244,8 +243,7 @@ make_command_stream (int (*get_next_byte) (void *),
 
 command_t read_command_stream (command_stream_t s)
 {
-  /* FIXME: Replace this with your implementation too.  
-            implementation will be depth first post-order traversal of command tree*/
+  /* FIXME: Replace this with your implementation too.  */
 
 
 
