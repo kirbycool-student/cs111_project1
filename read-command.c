@@ -22,6 +22,8 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream);
 //TODO - all errors: output to stderr w/ line number and colon
 
 
+
+
 bool is_word_char( char c )    //checks if c is in the subset of command word characters
 {
     if( isalnum(c) )    //alphanumeric == letter or digits
