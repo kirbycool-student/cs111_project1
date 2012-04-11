@@ -193,6 +193,24 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
 
     for ( next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
     {
+        if(next_byte == '#')
+        {
+            char byte;
+            while(true)
+            {
+                byte = get_next_byte(stream);
+                if(byte == EOF)
+                {
+                    next_byte = EOF;
+                    break;
+                }
+                else if(byte == '\n')
+                {
+                    break;
+                }
+            }
+            continue;
+        }
         if (next_byte == ' ' || next_byte == '\t')
         {
             continue;
