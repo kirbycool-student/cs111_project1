@@ -204,7 +204,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
                 word_size *= 2;
                 words[words_index] = realloc( words[words_index], sizeof(char*) * word_size );
             }
-            strcat(words[words_index], &next_byte);                       
+            strcat(word, &next_byte);                       
         }
         else    //error: some strange character
         { 
@@ -220,7 +220,8 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
 command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, bool subshell)
 {
     fprintf(stdout,"beginning add_command_subshell\n");//TODO:remove debugging print
-    command_t prev_command;
+    command_t prev_command = malloc(sizeof(struct command));
+    prev_command->type = 999;
     char next_byte;
     enum command_type type;
 
@@ -319,6 +320,8 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
             }
             else
             {
+                if (prev_command->type == 999)
+                    continue;
                 type = SEQUENCE_COMMAND;
                 prev_command = add_command_normal(get_next_byte, stream, type, prev_command);
             }
