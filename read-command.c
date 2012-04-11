@@ -46,9 +46,12 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
     command_t command = malloc(sizeof(struct command));
     command->type = SIMPLE_COMMAND;
     
-    int number_words = 5;   //staring num strings in array
-    int word_size = 20;     //num chars in string
-    int words_index = 0;       //which word we are adding to
+    const int default_num_words = 5;
+    const int default_word_size = 20;
+    
+    int number_words = default_num_words;   //starting num strings in array
+    int word_size = default_word_size;      //num chars in string
+    int words_index = 0;                    //which word we are adding to
     char** words = (char**) malloc( sizeof(char*) * number_words );      //DONE: implement dynamic resizing string
     char* word = malloc( sizeof(char) * word_size);
     word[0] = '\0';
@@ -103,16 +106,17 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
         }
         else if ( next_byte == '<' )
         {
-            if ( input_flag == true || output_flag == true || strlen( word ) == 0)
+            if ( input_flag == true || output_flag == true || strlen( word ) == 0)  // input syntax error
             {
-                ; //TODO: some error input has already occured
+                fprintf(stderr,"%d: Some error input has already occured.\n", error_line_number);
+                exit(1);
             }
             if ( end_word_flag )
             {
                 words[words_index] = word;
             }
             command->u.word = words;
-            word_size = 20;
+            word_size = default_word_size;
             word = (char*) malloc( sizeof(char) * word_size );
             word[0] = '\0';
             input_flag = false;
@@ -120,9 +124,10 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
         }
         else if ( next_byte == '>' )
         {
-            if ( output_flag == true )
+            if ( output_flag == true )  //error
             {
-                ; //TODO: some error output has already occured
+                    fprintf(stderr,"%d: Output has already occurred.\n", error_line_number);
+                    exit(1);
             }
             if ( end_word_flag )
             {
@@ -136,11 +141,12 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
                     command->u.word = words;
                 }            
             }
-            else
+            else    //error
             {
-                ; //TODO: some error
+                    fprintf(stderr,"%d: I/O Syntax error.\n", error_line_number);
+                    exit(1);
             }
-            word_size = 20;
+            word_size = default_word_size;
             word = (char *) malloc( sizeof(char) * word_size);
             word[0] = '\0';
             output_flag = true;
@@ -150,9 +156,10 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
         {
             if (end_word_flag)
             {
-                if ( output_flag || input_flag )
+                if ( output_flag || input_flag )    // error: both flags set
                 {
-                    //TODO: some error. there is more than one word after an I/O token;
+                    fprintf(stderr,"%d: More than one word after an I/O token.\n", error_line_number);
+                    exit(1);
                 }
                 if ( words_index == (number_words-1) )           //resize
                 {
@@ -160,7 +167,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
                     words = realloc( words, sizeof(char*) * number_words );
                 }
                 words[words_index] = word;
-                word_size = 20;
+                word_size = default_word_size;
                 word = (char*) malloc(sizeof(char) * word_size);
                 word[0] = '\0';                 //rest stuff for the next word
                 words_index++;
@@ -174,9 +181,10 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
             }
             strcat(words[words_index], &next_byte);                       
         }
-        else
+        else    //error: some strange character
         { 
-            //TODO: error invalid char
+                fprintf(stderr,"%d: Illegal character used.\n", error_line_number);
+                exit(1);
         }
 
     }
@@ -222,7 +230,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
             {
                 break;
             }
-            else
+            else    //error
             {
                 fprintf(stderr,"%d: Character ')' encountered outside of a subshell.\n", error_line_number);
                 exit(1);
@@ -257,9 +265,8 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
             {
                 type = AND_COMMAND;
             }
-            else
+            else    //error
             {
-                //done: some error
                 fprintf(stderr,"%d: Single '&' encountered.\n", error_line_number);
                 exit(1);
             }
@@ -286,9 +293,8 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
                     break;
                 }
             }
-            if( ! isspace(next_byte) && ! is_word_char(next_byte))
+            if( ! isspace(next_byte) && ! is_word_char(next_byte))  //error
             {
-                //done: some error
                 fprintf(stderr,"%d: Newline followed by improper character.\n", error_line_number);
                 exit(1);
             }
@@ -308,9 +314,8 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
         {
             prev_command = add_command_simple(get_next_byte, stream);
         }
-        else    //some strange character
+        else    //some strange character  error
         {
-               //done: error
             fprintf(stderr,"%d: Illegal character used.\n", error_line_number);
             exit(1);
         }
@@ -356,9 +361,8 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
             command->u.command[1] = add_command_simple(get_next_byte, stream);
             break;
         }
-        else
+        else    //error
         {
-            //done:ERROR
             fprintf(stderr,"%d: Normal command not followed by simple command or subshell command.\n", error_line_number);
             exit(1);
         }
