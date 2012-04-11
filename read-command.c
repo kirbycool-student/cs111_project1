@@ -4,27 +4,24 @@
 #include "command-internals.h"
 
 #include <error.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>    //for booleans
-#include <ctype.h>    //for isalpha and isdigit
+#include <stdbool.h>    //for boolean flags
+#include <ctype.h>      //for isalnum, isspaces, etc
 
-/* FIXME: You may need to add #include directives, macro definitions,
-   static function definitions, etc.  */
+/////////////       FUNCTION PROTOTYPES     /////////////
 
-command_t add_command_normal( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command);
-command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int subshell);
+bool is_word_char( char c );
 command_t add_command_simple( int (*get_next_byte) (void *), void *stream);
+command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, bool subshell);
+command_t add_command_normal( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command);
 
+/////////////       GLOBAL VARIABLES     /////////////
 
-//TODO - all errors: output to stderr w/ line number and colon
+int error_line_number;
 
-
-//test text
-
-
+/////////////       FUNCTION DEFINITIONS     /////////////
 
 bool is_word_char( char c )    //checks if c is in the subset of command word characters
 {
@@ -169,7 +166,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
     return command;
 }    
         
-command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int subshell)
+command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, bool subshell)
 {
     command_t prev_command;
     char next_byte;
@@ -189,13 +186,13 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
             }
             else
             {
-                ;
+                fprintf(stderr,"%d: Character ')' encountered outside of a subshell.\n", error_line_number);
+                exit(1);
             }
-                //TODO: some error
         }
         else if (next_byte == '(')
         {
-            prev_command = add_command_subshell(get_next_byte, stream, 1);
+            prev_command = add_command_subshell(get_next_byte, stream, true);
         }
         else if (next_byte == '|' )
         {
@@ -224,18 +221,26 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
             }
             else
             {
-                //TODO: some error
+                //done: some error
+                fprintf(stderr,"%d: Single '&' encountered.\n", error_line_number);
+                exit(1);
             }
             prev_command = add_command_normal(get_next_byte, stream, type, prev_command);
         }
         else if (next_byte == '\n')
         {
+            error_line_number++;
             fpos_t pos;
             fgetpos(stream, &pos);
             for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
             {
-                if (next_byte == ' ' || next_byte == '\t' || next_byte == '\n')
+                if (next_byte == ' ' || next_byte == '\t' )
                 {
+                    continue;
+                }
+                else if ( next_byte == '\n' )
+                {
+                    error_line_number++;
                     continue;
                 }
                 else
@@ -245,7 +250,9 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
             }
             if( ! isspace(next_byte) && ! is_word_char(next_byte))
             {
-                //TODO: some error
+                //done: some error
+                fprintf(stderr,"%d: Newline followed by improper character.\n", error_line_number);
+                exit(1);
             }
             else
             {
@@ -254,10 +261,20 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
             }
             fsetpos(stream, &pos);
         }
-        else if (next_byte == ';')
+        else if (next_byte == ';')  //TODO: optional semicolon for statements
         {
             type = SEQUENCE_COMMAND;
             prev_command = add_command_normal(get_next_byte, stream, type, prev_command); 
+        }
+        else if ( is_word_char(next_byte) )
+        {
+            prev_command = add_command_simple(get_next_byte, stream);
+        }
+        else    //some strange character
+        {
+               //done: error
+            fprintf(stderr,"%d: Illegal character used.\n", error_line_number);
+            exit(1);
         }
     }
     if ( subshell )
@@ -268,7 +285,9 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
         return command;
     }
     else
+    {
         return prev_command;
+    }
 }
 
 
@@ -283,7 +302,7 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
     char next_byte;
     for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
     {
-        if (next_byte == ' ')   //TODO: again, whitespace is more complex
+        if (next_byte == ' ' || next_byte == '\t')
         {
             continue;
         }
@@ -299,16 +318,16 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
         }
         else
         {
-            //TODO:ERROR
+            //done:ERROR
+            fprintf(stderr,"%d: Normal command not followed by simple command or subshell command.\n", error_line_number);
+            exit(1);
         }
     }
-    
     return command;
 }
-    
 
-/* FIXME: Define the type 'struct command_stream' here.  This should
-   complete the incomplete type declaration in command.h.  */
+/////////////       COMMAND STREAM STRUCT AND FUNCTIONS     /////////////
+
 struct command_stream
 {
     command_t head;
@@ -318,11 +337,6 @@ command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
 		     void *get_next_byte_argument)
 {
-
-  /* FIXME: Replace this with your implementation.  You may need to
-     add auxiliary functions and otherwise modify the source code.
-     You can also use external functions defined in the GNU C Library.  */
-
     command_stream_t command_stream = malloc( sizeof(command_stream) );
     
     command_t head_command = malloc( sizeof(struct command) );
@@ -330,17 +344,9 @@ make_command_stream (int (*get_next_byte) (void *),
     command_stream->head = head_command;
 
     return command_stream;
-
-  //error (1, 0, "command reading not yet implemented");
-  //return 0;
 }
 
 command_t read_command_stream (command_stream_t s)
 {
-  /* FIXME: Replace this with your implementation too.  */
-
-
-
-  error (1, 0, "command reading not yet implemented");
-  return 0;
+    return s->head;
 }
