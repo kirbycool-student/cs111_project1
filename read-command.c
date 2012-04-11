@@ -13,9 +13,12 @@
 /////////////       FUNCTION PROTOTYPES     /////////////
 
 bool is_word_char( char c );
-command_t add_command_simple( int (*get_next_byte) (void *), void *stream);
-command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, bool subshell);
-command_t add_command_normal( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command);
+char skip_comment( int (*get_next_byte) (void *), void *stream );
+command_t traverse_stream( command_t head, bool *subtree_complete );
+
+command_t add_command_simple( int (*get_next_byte) (void *), void *stream );
+command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, bool subshell );
+command_t add_command_normal( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command );
 
 /////////////       GLOBAL VARIABLES     /////////////
 
@@ -58,6 +61,66 @@ char skip_comment( int (*get_next_byte) (void *), void *stream)
      return byte;
 }
 
+command_t traverse_stream( command_t head, bool *subtree_complete )
+{
+    command_t command_ptr;
+    
+    if ( head == NULL )
+    {
+        return NULL;
+    }
+    else if ( head->type == SEQUENCE_COMMAND )
+    {
+        if (head->u.command[0] != NULL)
+        {
+            command_ptr = traverse_stream(head->u.command[0],subtree_complete);
+            if( *subtree_complete )
+            {
+                head->u.command[0] = NULL;
+            }
+            *subtree_complete = false;
+            return command_ptr;
+        }
+        else if ( head->u.command[1] != NULL )
+        {
+            command_ptr = traverse_stream(head->u.command[1],subtree_complete);
+            if( *subtree_complete )
+            {
+                head->u.command[1] = NULL;
+            }
+            *subtree_complete = true;
+            return command_ptr;
+        }
+        else    //empty sequence command
+        {
+            *subtree_complete = true;
+            return NULL;
+        }
+    }
+    else if (head->type == SUBSHELL_COMMAND)
+    {
+        if( head->u.subshell_command != NULL )
+        {
+            command_ptr = traverse_stream(head->u.subshell_command,subtree_complete);
+            if( *subtree_complete )
+            {
+                head->u.subshell_command = NULL;
+            }
+            *subtree_complete = true;
+            return command_ptr;
+        }
+        else    // empty subshell command
+        {
+            *subtree_complete = true;
+            return NULL;
+        }
+    }
+    else    // normal command
+    {
+        *subtree_complete = true;
+        return head;
+    }
+}
 
 command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
 {
@@ -456,5 +519,12 @@ make_command_stream (int (*get_next_byte) (void *),
 command_t read_command_stream (command_stream_t s)
 {
     //fprintf(stdout,"beginning read_command_stream\n");//TODO:remove debugging print
-    return s->head;
+    bool tree_complete;
+    command_t command_ptr;
+    command_ptr = traverse_stream( s->head, &tree_complete );
+    if ( tree_complete ) 
+    {
+        s->head = NULL;
+    }
+    return command_ptr;
 }
