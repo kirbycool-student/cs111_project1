@@ -4,27 +4,24 @@
 #include "command-internals.h"
 
 #include <error.h>
-
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdbool.h>    //for booleans
-#include <ctype.h>    //for isalpha and isdigit
+#include <stdbool.h>    //for boolean flags
+#include <ctype.h>      //for isalnum, isspaces, etc
 
-/* FIXME: You may need to add #include directives, macro definitions,
-   static function definitions, etc.  */
+/////////////       FUNCTION PROTOTYPES     /////////////
 
-command_t add_command_normal( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command);
-command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int subshell);
+bool is_word_char( char c );
 command_t add_command_simple( int (*get_next_byte) (void *), void *stream);
+command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int subshell);
+command_t add_command_normal( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command);
 
+/////////////       GLOBAL VARIABLES     /////////////
 
-//TODO - all errors: output to stderr w/ line number and colon
+int error_line_number;
 
-
-//test text
-
-
+/////////////       FUNCTION DEFINITIONS     /////////////
 
 bool is_word_char( char c )    //checks if c is in the subset of command word characters
 {
@@ -254,7 +251,9 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
     }
     return command;
 }
-    
+
+/////////////       COMMAND STREAM STRUCT AND FUNCTIONS     /////////////
+
 struct command_stream
 {
     command_t head;
