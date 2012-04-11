@@ -14,7 +14,7 @@
 
 bool is_word_char( char c );
 command_t add_command_simple( int (*get_next_byte) (void *), void *stream);
-command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int subshell);
+command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, bool subshell);
 command_t add_command_normal( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command);
 
 /////////////       GLOBAL VARIABLES     /////////////
@@ -107,7 +107,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
     return command;
 }    
         
-command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int subshell)
+command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, bool subshell)
 {
     command_t prev_command;
     char next_byte;
@@ -127,12 +127,13 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
             }
             else
             {
-                ;                //TODO: some error
+                fprintf(stderr,"%d: Character ')' encountered outside of a subshell.\n", error_line_number);
+                exit(1);
             }
         }
         else if (next_byte == '(')
         {
-            prev_command = add_command_subshell(get_next_byte, stream, 1);
+            prev_command = add_command_subshell(get_next_byte, stream, true);
         }
         else if (next_byte == '|' )
         {
@@ -161,7 +162,9 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
             }
             else
             {
-                //TODO: some error
+                //done: some error
+                fprintf(stderr,"%d: Single '&' encountered.\n", error_line_number);
+                exit(1);
             }
             prev_command = add_command_normal(get_next_byte, stream, type, prev_command);
         }
@@ -182,7 +185,9 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
             }
             if( ! isspace(next_byte) && ! is_word_char(next_byte))
             {
-                //TODO: some error
+                //done: some error
+                fprintf(stderr,"%d: Newline followed by improper character.\n", error_line_number);
+                exit(1);
             }
             else
             {
@@ -202,7 +207,9 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
         }
         else    //some strange character
         {
-               //TODO: error
+               //done: error
+            fprintf(stderr,"%d: Illegal character used.\n", error_line_number);
+            exit(1);
         }
     }
     if ( subshell )
@@ -246,7 +253,9 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
         }
         else
         {
-            //TODO:ERROR
+            //done:ERROR
+            fprintf(stderr,"%d: Normal command not followed by simple command or subshell command.\n", error_line_number);
+            exit(1);
         }
     }
     return command;
