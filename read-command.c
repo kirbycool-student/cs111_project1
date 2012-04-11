@@ -130,9 +130,8 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
             }
             else
             {
-                ;
+                ;                //TODO: some error
             }
-                //TODO: some error
         }
         else if (next_byte == '(')
         {
@@ -217,7 +216,9 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
         return command;
     }
     else
+    {
         return prev_command;
+    }
 }
 
 
@@ -232,7 +233,7 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
     char next_byte;
     for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
     {
-        if (next_byte == ' ')   //TODO: again, whitespace is more complex
+        if (next_byte == ' ' || next_byte == '\t')
         {
             continue;
         }
@@ -251,7 +252,6 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
             //TODO:ERROR
         }
     }
-    
     return command;
 }
     
