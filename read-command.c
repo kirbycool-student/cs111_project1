@@ -61,7 +61,7 @@ char skip_comment( int (*get_next_byte) (void *), void *stream)
 
 command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
 {
-    fprintf(stdout,"beginning add_command_simple\n");   //TODO:remove debugging print
+    //fprintf(stdout,"beginning add_command_simple\n");   //TODO:remove debugging print
     command_t command = malloc(sizeof(struct command));
     command->type = SIMPLE_COMMAND;
     
@@ -220,12 +220,13 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
         
 command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, bool subshell)
 {
-    fprintf(stdout,"beginning add_command_subshell\n");//TODO:remove debugging print
+    //fprintf(stdout,"beginning add_command_subshell\n");//TODO:remove debugging print
     command_t prev_command = malloc(sizeof(struct command));
     prev_command->type = 999;
     char next_byte;
     enum command_type type;
     fpos_t pos;
+    fgetpos(stream, &pos);
 
     for ( next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
     {
@@ -322,7 +323,6 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
             }
             if( ! isspace(next_byte) && ! is_word_char(next_byte))  //error
             {
-                //done: some error
                 fprintf(stderr,"%d: Newline followed by improper character.\n", error_line_number);
                 exit(1);
             }
@@ -352,7 +352,6 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
         }
         else    //some strange character  error
         {
-               //done: error
             fprintf(stderr,"%d: Illegal character used.\n", error_line_number);
             exit(1);
         }
@@ -375,7 +374,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
 command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command)
 {
     // normal command is anything other than simple or subshell
-    fprintf(stdout,"beginning add_command_normal\n");//TODO:remove debugging print
+    //fprintf(stdout,"beginning add_command_normal\n");//TODO:remove debugging print
 
     command_t command = malloc(sizeof(struct command));
     command->type = type;
@@ -415,7 +414,6 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
         }
         else    //error
         {
-            //done:ERROR
             fprintf(stderr,"%d: Normal command not followed by simple command or subshell command.\n", error_line_number);
             exit(1);
         }
@@ -436,19 +434,27 @@ command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
 		     void *get_next_byte_argument)
 {
-    fprintf(stdout,"beginning make_command_stream\n");//TODO:remove debugging print
+   // fprintf(stdout,"beginning make_command_stream\n");//TODO:remove debugging print
 
     command_stream_t command_stream = malloc( sizeof(command_stream) );
-    
     command_t head_command = malloc( sizeof(struct command) );
+    
     head_command = add_command_subshell(get_next_byte, get_next_byte_argument, false);
-    command_stream->head = head_command;
-
-    return command_stream;
+    
+    if( head_command != NULL)
+    {
+        command_stream->head = head_command;
+        return command_stream;
+    }
+    else
+    {
+            fprintf(stderr,"%d: Error in construction of command stream.\n", error_line_number);
+            exit(1);
+    }
 }
 
 command_t read_command_stream (command_stream_t s)
 {
-    fprintf(stdout,"beginning read_command_stream\n");//TODO:remove debugging print
+    //fprintf(stdout,"beginning read_command_stream\n");//TODO:remove debugging print
     return s->head;
 }
