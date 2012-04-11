@@ -42,6 +42,7 @@ bool is_word_char( char c )    //checks if c is in the subset of command word ch
 
 command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
 {
+    fprintf(stdout,"beginning add_command_simple\n");   //TODO:remove debugging print
     command_t command = malloc(sizeof(struct command));
     command->type = SIMPLE_COMMAND;
     
@@ -185,6 +186,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
         
 command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, bool subshell)
 {
+    fprintf(stdout,"beginning add_command_subshell\n");//TODO:remove debugging print
     command_t prev_command;
     char next_byte;
     enum command_type type;
@@ -312,6 +314,8 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
 command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command)
 {
     // normal command is anything other than simple or subshell
+    fprintf(stdout,"beginning add_command_normal\n");//TODO:remove debugging print
+
     command_t command = malloc(sizeof(struct command));
     command->type = type;
     command->u.command[0] = prev_command;
@@ -354,6 +358,8 @@ command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
 		     void *get_next_byte_argument)
 {
+    fprintf(stdout,"beginning make_command_stream\n");//TODO:remove debugging print
+
     command_stream_t command_stream = malloc( sizeof(command_stream) );
     
     command_t head_command = malloc( sizeof(struct command) );
@@ -365,5 +371,6 @@ make_command_stream (int (*get_next_byte) (void *),
 
 command_t read_command_stream (command_stream_t s)
 {
+    fprintf(stdout,"beginning read_command_stream\n");//TODO:remove debugging print
     return s->head;
 }
