@@ -22,6 +22,10 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream);
 //TODO - all errors: output to stderr w/ line number and colon
 
 
+//test text
+
+
+
 bool is_word_char( char c )    //checks if c is in the subset of command word characters
 {
     if( isalnum(c) )    //alphanumeric == letter or digits
@@ -114,7 +118,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
 
     for ( next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
     {
-        if (next_byte == ' ')
+        if (next_byte == ' ' || next_byte == '\t')
         {
             continue;
         }
@@ -131,7 +135,9 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
                 //TODO: some error
         }
         else if (next_byte == '(')
+        {
             prev_command = add_command_subshell(get_next_byte, stream, 1);
+        }
         else if (next_byte == '|' )
         {
             //look at next byte for or command, if not command is pipe
@@ -169,7 +175,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
             fgetpos(stream, &pos);
             for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
             {
-                if (next_byte == ' ' || next_byte == '\n')
+                if (next_byte == ' ' || next_byte == '\t' || next_byte == '\n')
                 {
                     continue;
                 }
@@ -178,7 +184,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
                     break;
                 }
             }
-            if(next_byte == '|' || next_byte == '&' || next_byte == ';' || next_byte == '<' || next_byte == '>')
+            if( ! isspace(next_byte) && ! is_word_char(next_byte))
             {
                 //TODO: some error
             }
@@ -257,15 +263,14 @@ make_command_stream (int (*get_next_byte) (void *),
   /* FIXME: Replace this with your implementation.  You may need to
      add auxiliary functions and otherwise modify the source code.
      You can also use external functions defined in the GNU C Library.  */
+
     command_stream_t command_stream = malloc( sizeof(command_stream) );
     
     command_t head_command = malloc( sizeof(struct command) );
-    head_command = add_command_subshell(get_next_byte, get_next_byte_argument, 0);
+    head_command = add_command_subshell(get_next_byte, get_next_byte_argument, false);
     command_stream->head = head_command;
 
     return command_stream;
-
-    	// write function for determining if character is in set of possible chars for word
 
   //error (1, 0, "command reading not yet implemented");
   //return 0;
@@ -273,8 +278,7 @@ make_command_stream (int (*get_next_byte) (void *),
 
 command_t read_command_stream (command_stream_t s)
 {
-  /* FIXME: Replace this with your implementation too.  
-            implementation will be depth first post-order traversal of command tree*/
+  /* FIXME: Replace this with your implementation too.  */
 
 
 
