@@ -45,11 +45,12 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
     command_t command = malloc(sizeof(struct command));
     command->type = SIMPLE_COMMAND;
     
-    int number_words = 5;
-    int word_size = 20;
-    int words_index = 0;
-    char** words = (char**) malloc( sizeof(char*) * number_words );      //TODO: implement dynamic resizing string
+    int number_words = 5;   //staring num strings in array
+    int word_size = 20;     //num chars in string
+    int words_index = 0;       //which word we are adding to
+    char** words = (char**) malloc( sizeof(char*) * number_words );      //DONE: implement dynamic resizing string
     char* word = malloc( sizeof(char) * word_size);
+    word[0] = '\0';
     char next_byte;
     fpos_t pos;
     fgetpos(stream, &pos);
@@ -63,6 +64,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
     
     for ( next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream) )
     {
+        fgetpos(stream, &pos);
         if ( next_byte == ' ' || next_byte == '\t' )        //word ended
         {
             if ( strlen(word) == 0 || end_word_flag)
@@ -76,6 +78,10 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
         }
         else if ( next_byte =='|' || next_byte == '&' || next_byte == ';' || next_byte == '\n')
         {   
+            if ( next_byte == '\n')
+            {
+                error_line_number++;
+            }
             if ( end_word_flag) 
             {
                 if (output_flag)
@@ -96,11 +102,17 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
         }
         else if ( next_byte == '<' )
         {
-            if ( input_flag == true || output_flag == true)
+            if ( input_flag == true || output_flag == true || strlen( word ) == 0)
             {
                 ; //TODO: some error input has already occured
             }
+            if ( end_word_flag )
+            {
+                words[words_index] = word;
+            }
             command->u.word = words;
+            word_size = 20;
+            word = (char*) malloc( sizeof(char) * word_size );
             word[0] = '\0';
             input_flag = false;
             end_word_flag = false;
@@ -111,14 +123,24 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
             {
                 ; //TODO: some error output has already occured
             }
-            if ( !input_flag )
+            if ( end_word_flag )
             {
-                command->u.word = words;
+                if ( input_flag )
+                {
+                    command->input = word;
+                }
+                else
+                {
+                    words[words_index] = word;
+                    command->u.word = words;
+                }            
             }
             else
             {
                 ; //TODO: some error
             }
+            word_size = 20;
+            word = (char *) malloc( sizeof(char) * word_size);
             word[0] = '\0';
             output_flag = true;
             end_word_flag = false;
@@ -137,32 +159,27 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
                     words = realloc( words, sizeof(char*) * number_words );
                 }
                 words[words_index] = word;
+                word_size = 20;
+                word = (char*) malloc(sizeof(char) * word_size);
                 word[0] = '\0';                 //rest stuff for the next word
                 words_index++;
-                word_size = 20;
                 end_word_flag = false;
             }
             //TODO: resize if array too short
-            if ( (int) strlen( words[words_index] ) == word_size-1)    //resize word
+            if ( (int) strlen( word ) == word_size-1)    //resize word
             {
+                word_size *= 2;
                 words[words_index] = realloc( words[words_index], sizeof(char*) * word_size );
             }
             strcat(words[words_index], &next_byte);                       
         }
         else
         { 
-            //TODO: error
+            //TODO: error invalid char
         }
 
     }
-    if ( output_flag == true )
-    {
-        command->output = word;
-    }
-    else
-    {
-        command->u.word = &word;
-    }
+    command->u.word = words;
     return command;
 }    
         
