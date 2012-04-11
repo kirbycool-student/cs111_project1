@@ -195,10 +195,18 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, int
             }
             fsetpos(stream, &pos);
         }
-        else if (next_byte == ';')
+        else if (next_byte == ';')  //TODO: optional semicolon for statements
         {
             type = SEQUENCE_COMMAND;
             prev_command = add_command_normal(get_next_byte, stream, type, prev_command); 
+        }
+        else if ( is_word_char(next_byte) )
+        {
+            prev_command = add_command_simple(get_next_byte, stream);
+        }
+        else    //some strange character
+        {
+               //TODO: error
         }
     }
     if ( subshell )
