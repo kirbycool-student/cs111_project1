@@ -40,6 +40,25 @@ bool is_word_char( char c )    //checks if c is in the subset of command word ch
     }
 }
 
+char skip_comment( int (*get_next_byte) (void *), void *stream)
+{
+    char byte;
+    while(true)
+    {
+        byte = get_next_byte(stream);
+        if(byte == EOF)
+        {
+            break;
+        }
+        else if(byte == '\n')
+        {
+            break;
+        }
+     }
+     return byte;
+}
+
+
 command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
 {
     fprintf(stdout,"beginning add_command_simple\n");   //TODO:remove debugging print
@@ -66,6 +85,12 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
     for ( next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream) )
     {
         fgetpos(stream, &pos);
+        if ( next_byte == '#')
+        {
+            next_byte = skip_comment(get_next_byte, stream);
+            if (next_byte == EOF)
+                break;
+        }
         if ( next_byte == ' ' || next_byte == '\t' )        //word ended
         {
             if ( strlen(word) == 0 || end_word_flag)
@@ -195,21 +220,11 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
     {
         if(next_byte == '#')
         {
-            char byte;
-            while(true)
+            next_byte = skip_comment( get_next_byte, stream );
+            if (next_byte == EOF)
             {
-                byte = get_next_byte(stream);
-                if(byte == EOF)
-                {
-                    next_byte = EOF;
-                    break;
-                }
-                else if(byte == '\n')
-                {
-                    break;
-                }
+                break;
             }
-            continue;
         }
         if (next_byte == ' ' || next_byte == '\t')
         {
@@ -271,7 +286,11 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
             fgetpos(stream, &pos);
             for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
             {
-                if (next_byte == ' ' || next_byte == '\t' )
+                if (next_byte == '#')
+                {
+                    next_byte = skip_comment(get_next_byte, stream);
+                }
+                if (next_byte == ' ' || next_byte == '\t')
                 {
                     continue;
                 }
@@ -285,7 +304,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
                     break;
                 }
             }
-            if( ! isspace(next_byte) && ! is_word_char(next_byte))
+            if( ! isspace(next_byte) && ! is_word_char(next_byte) && next_byte != '#')
             {
                 //done: some error
                 fprintf(stderr,"%d: Newline followed by improper character.\n", error_line_number);
@@ -341,6 +360,12 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
     char next_byte;
     for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
     {
+        if ( next_byte == '#')
+        {
+            next_byte = skip_comment(get_next_byte, stream);
+            if (next_byte == EOF)
+                break;
+        }
         if (next_byte == ' ' || next_byte == '\t')
         {
             continue;
