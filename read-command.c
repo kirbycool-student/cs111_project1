@@ -68,7 +68,7 @@ char skip_comment( int (*get_next_byte) (void *), void *stream)
      return byte;
 }
 
-//TODO: add free function to traverse trees and free memory
+
 command_t traverse_stream( command_t head, bool *subtree_complete )
 {
     command_t command_ptr;
@@ -130,6 +130,29 @@ command_t traverse_stream( command_t head, bool *subtree_complete )
     {
         *subtree_complete = true;
         return head;
+    }
+}
+
+int free_command(command_t head)   //frees high lvl and/ors
+{
+    if ( head->type == SIMPLE_COMMAND )
+    {
+        free(head);
+        return true;
+    }
+    else if ( head->type == AND_COMMAND || 
+              head->type == OR_COMMAND || 
+              head->type == PIPE_COMMAND    )   // and, or, pipe
+    {
+        free_command(head->u.command[0]);
+        free_command(head->u.command[1]);
+        free(head);
+        return true;
+    }
+    else    //this should never happen
+    {
+        fprintf(stderr,"free_command: incorrect type or misformatted tree.\n");
+        return false;
     }
 }
 
@@ -443,8 +466,6 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
     }
 }
 
-
-
 command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command)
 {
     // normal command is anything other than simple or subshell
@@ -631,7 +652,8 @@ command_t read_command_stream (command_stream_t s)
     command_t command_ptr;
     command_ptr = traverse_stream( s->head, &tree_complete );
     if ( tree_complete ) 
-    {
+    {   
+        free(s->head);
         s->head = NULL;
     }
     return command_ptr;
