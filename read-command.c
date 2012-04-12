@@ -438,7 +438,13 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
 {
     // normal command is anything other than simple or subshell
     //fprintf(stdout,"beginning add_command_normal\n");//TODO:remove debugging print
-
+    if(type == PIPE_COMMAND && (prev_command->type != SIMPLE_COMMAND ||
+         prev_command->type != SUBSHELL_COMMAND) )
+    {
+        fprintf(stderr,"%d: Pipe command not preceeded by simple command or subshell command.\n", error_line_number);
+        exit(1);
+    }
+ 
     command_t command = malloc(sizeof(struct command));
     command->type = type;
     command->u.command[0] = prev_command;
