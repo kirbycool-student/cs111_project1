@@ -534,7 +534,8 @@ command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command
 
     char byte;
     fpos_t pos;
-    for ( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream) )
+    fgetpos( stream, &pos);
+    for ( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream))
     {
         if ( byte == ' ' || '\t')
         {
@@ -556,6 +557,7 @@ command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command
         }
         else
         {
+            command = prev_command;
             break;
         }
     }
@@ -568,11 +570,13 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
     command->u.command[0] = prev_command;
     command->type = SEQUENCE_COMMAND;
 
-    command_t simple_command = add_command_simple( get_next_byte, stream);
-    command_t pipe_command = add_command_pipe( get_next_byte, stream, simple_command); 
 
-    char byte;
     fpos_t pos;
+    command_t simple_command = add_command_simple( get_next_byte, stream);
+    fgetpos( stream, &pos );
+    command_t pipe_command = add_command_pipe( get_next_byte, stream, simple_command); 
+    fgetpos( stream, &pos );
+    char byte;
     enum command_type type;
     fgetpos( stream, &pos );
     for ( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream))
@@ -605,7 +609,7 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
         }
         else if ( byte =='\n' )
         {
-            fseek(stream, -1, 1);
+            fseek(stream, -1, SEEK_CUR);
             command->u.command[1] = pipe_command;
         }
     }
