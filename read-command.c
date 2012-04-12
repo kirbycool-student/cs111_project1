@@ -66,7 +66,7 @@ char skip_comment( int (*get_next_byte) (void *), void *stream)
      return byte;
 }
 
-//TODO: add free function to traverse trees and free memory
+
 command_t traverse_stream( command_t head, bool *subtree_complete )
 {
     command_t command_ptr;
