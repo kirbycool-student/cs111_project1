@@ -200,7 +200,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
                 fprintf(stderr,"%d: Some error input has already occured.\n", error_line_number);
                 exit(1);
             }
-            if ( end_word_flag )
+            if ( strlen(word) != 0 )
             {
                 words[words_index] = word;
             }
@@ -218,7 +218,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
                     fprintf(stderr,"%d: Output has already occurred.\n", error_line_number);
                     exit(1);
             }
-            if ( end_word_flag )
+            if ( strlen(word) != 0)
             {
                 if ( input_flag )
                 {
