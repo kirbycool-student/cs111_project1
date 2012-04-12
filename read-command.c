@@ -25,6 +25,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream );
 command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, bool subshell );
 command_t add_command_normal( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command );
 command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command_t prev_command );
+command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, command_t prev_command );
 
 /////////////       GLOBAL VARIABLES     /////////////
 
@@ -416,7 +417,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
         else if (next_byte == ';')  //TODO: optional semicolon for statements
         {
             type = SEQUENCE_COMMAND;
-            prev_command = add_command_normal(get_next_byte, stream, type, prev_command); 
+            prev_command = add_command_sequence(get_next_byte, stream, prev_command); 
         }
         else if ( is_word_char(next_byte) )
         {
@@ -447,8 +448,6 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
 command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command)
 {
     // normal command is anything other than simple or subshell
-    //fprintf(stdout,"beginning add_command_normal\n");//TODO:remove debugging print
-        exit(1);
  
     command_t command = malloc(sizeof(struct command));
     command->type = type;
@@ -542,6 +541,55 @@ command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command
     return command;
 }
     
+command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, command_t prev_command )
+{
+    command_t command = malloc( sizeof(struct command) );
+    command->u.command[0] = prev_command;
+    command->type = SEQUENCE_COMMAND;
+
+    command_t simple_command = add_command_simple( get_next_byte, stream);
+    command_t pipe_command = add_command_pipe( get_next_byte, stream, simple_command); 
+
+    char byte;
+    fpos_t pos;
+    enum command_type type;
+    fgetpos( stream, &pos );
+    for ( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream))
+    {
+        if ( byte == '&' )
+        {
+            byte = get_next_byte( stream );
+            if ( byte == '&')
+            {
+                type == AND_COMMAND;
+                command->u.command[1] = add_command_normal( get_next_byte, stream,type, pipe_command);
+            }
+            else
+            {
+                //TODO: some error
+            }
+        }
+        else if ( byte == '|' )
+        {
+            byte = get_next_byte( stream );
+            if ( byte == '|' )
+            {
+                type = OR_COMMAND;
+                command->u.command[1] = add_command_normal( get_next_byte, stream, type, pipe_command);
+            }
+            else
+            {
+                //TODO: some error
+            }
+        }
+        else if ( byte =='\n' )
+        {
+            fseek(stream, -1, 1);
+            command->u.command[1] = pipe_command;
+        }
+    }
+    return command;
+}
 
 
 
