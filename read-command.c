@@ -476,7 +476,6 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
     fpos_t pos;
 
     char next_byte;
-    fgetpos( stream, &pos);
     for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
     {
         if ( next_byte == '#')
@@ -493,16 +492,49 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
         {
             continue;
         }
+        if (next_byte == '\n')
+        {
+            error_line_number++;
+            continue;
+        }
         else if (next_byte == '(')
         {
-            fsetpos( stream, &pos);
             command->u.command[1] = add_command_subshell(get_next_byte, stream, 1);
             break;
         }
         else if ( is_word_char(next_byte) )
         {
-            fsetpos( stream, &pos);
-            command->u.command[1] = add_command_simple(get_next_byte, stream);
+            fseek( stream, -1, SEEK_CUR);
+            command_t right_command = add_command_simple(get_next_byte, stream);
+            
+            for( next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
+            {
+                if ( next_byte == ' ' || next_byte == '\t')
+                {
+                    continue;
+                }
+                else if ( next_byte == '|' )
+                {
+                    fgetpos( stream, &pos );
+                    next_byte = get_next_byte( stream );
+                    if ( next_byte == '|' )      //OR command
+                    {
+                        fseek( stream, -2, SEEK_CUR );
+                        break;
+                    }
+                    else
+                    {
+                        right_command = add_command_pipe( get_next_byte, stream, right_command );
+                        break;
+                    }
+                }
+                else
+                {
+                    fseek( stream, -1, SEEK_CUR );
+                    break;
+                }
+            }
+            command->u.command[1] = right_command;
             break;
         }
         else    //error
@@ -510,8 +542,6 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
             fprintf(stderr,"%d: Normal command not followed by simple command or subshell command.\n", error_line_number);
             exit(1);
         }
-
-        fgetpos( stream, &pos );
     }
     return command;
 }
@@ -529,15 +559,29 @@ command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command
     command_t command = malloc( sizeof(struct command) );
     command->type = PIPE_COMMAND;
     command->u.command[0] = prev_command;
-    command->u.command[1] = add_command_simple(get_next_byte, stream);
 
     char byte;
+    for( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream))
+    {
+        if( byte == ' ' || byte == '\t' || byte == '\n' )
+            continue;
+        else
+            break;
+    }
+    fseek( stream, -1, SEEK_CUR );
+    command->u.command[1] = add_command_simple(get_next_byte, stream);
+
     fpos_t pos;
     fgetpos( stream, &pos);
     for( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream))
     {
         if ( byte == ' ' || byte == '\t')
         {
+            continue;
+        }
+        else if ( byte == '\n' )
+        {
+            error_line_number++;
             continue;
         }
         else if ( byte == '|' )
@@ -556,7 +600,7 @@ command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command
         }
         else
         {
-            command = prev_command;
+            fsetpos( stream, &pos );
             break;
         }
     }
@@ -591,6 +635,7 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
             }
             else
             {
+                fsetpos( stream, &pos );
                 right_command = add_command_pipe( get_next_byte, stream, right_command );
                 break;
             }
@@ -605,7 +650,6 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
     
     enum command_type type;
     fgetpos( stream, &pos );
-    bool and_or_flag = false;
     for ( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream))
     {
         if ( byte == '&' )
@@ -613,9 +657,8 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
             byte = get_next_byte( stream );
             if ( byte == '&')
             {
-                and_or_flag = true;
-                type == AND_COMMAND;
-                command->u.command[1] = add_command_normal( get_next_byte, stream,type, right_command);
+                type = AND_COMMAND;
+                right_command = add_command_normal( get_next_byte, stream,type, right_command);
             }
             else
             {
@@ -627,9 +670,8 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
             byte = get_next_byte( stream );
             if ( byte == '|' )
             {
-                and_or_flag = true;
                 type = OR_COMMAND;
-                command->u.command[1] = add_command_normal( get_next_byte, stream, type, right_command);
+                right_command = add_command_normal( get_next_byte, stream, type, right_command);
             }
             else
             {
@@ -639,10 +681,7 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
         else if ( byte =='\n' )
         {
             fseek(stream, -1, SEEK_CUR);
-            if (!and_or_flag)
-            {
-                command->u.command[1] = right_command;
-            }
+            command->u.command[1] = right_command;
             break;
         }
     }
