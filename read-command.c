@@ -399,7 +399,6 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
                     fgetpos( stream, &pos);
                     if (next_byte == EOF)
                     {
-                        fseek( stream, -1, 1);
                         break;
                     }
                 }
@@ -418,7 +417,12 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
                     break;
                 }
             }
-            if( ! isspace(next_byte) && ! is_word_char(next_byte))  //error
+            if ( next_byte == EOF )
+            {
+                fseek( stream, -1, 1);
+                continue;
+            }
+            else if( ! isspace(next_byte) && ! is_word_char(next_byte))  //error
             {
                 fprintf(stderr,"%d: Newline followed by improper character.\n", error_line_number);
                 exit(1);
