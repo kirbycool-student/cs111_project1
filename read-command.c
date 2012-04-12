@@ -19,6 +19,7 @@ command_t traverse_stream( command_t head, bool *subtree_complete );
 command_t add_command_simple( int (*get_next_byte) (void *), void *stream );
 command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, bool subshell );
 command_t add_command_normal( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command );
+command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command_t prev_command );
 
 /////////////       GLOBAL VARIABLES     /////////////
 
@@ -337,7 +338,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
                 type = PIPE_COMMAND;
                 fsetpos(stream, &pos);   //move the file pointer back
             }
-            prev_command = add_command_normal(get_next_byte, stream, type, prev_command);
+            prev_command = add_command_pipe(get_next_byte, stream, prev_command);
         }
         else if (next_byte == '&')
         {
@@ -438,12 +439,7 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
 {
     // normal command is anything other than simple or subshell
     //fprintf(stdout,"beginning add_command_normal\n");//TODO:remove debugging print
-    if(type == PIPE_COMMAND && (prev_command->type != SIMPLE_COMMAND ||
-         prev_command->type != SUBSHELL_COMMAND) )
-    {
-        fprintf(stderr,"%d: Pipe command not preceeded by simple command or subshell command.\n", error_line_number);
         exit(1);
-    }
  
     command_t command = malloc(sizeof(struct command));
     command->type = type;
@@ -491,6 +487,55 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
     }
     return command;
 }
+
+command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command_t prev_command )
+{
+    if( prev_command->type != SIMPLE_COMMAND ||
+         prev_command->type != SUBSHELL_COMMAND ||
+         prev_command->type != PIPE_COMMAND)
+    {
+        fprintf(stderr,"%d: Pipe command not preceeded by simple command or subshell command.\n", error_line_number);
+        exit(1);
+    }
+
+    command_t command = malloc( sizeof(struct command) );
+    command->type = PIPE_COMMAND;
+    command->u.command[0] = prev_command;
+    command->u.command[1] = add_command_simple(get_next_byte, stream);
+
+    char byte;
+    fpos_t pos;
+    for ( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream) )
+    {
+        if ( byte == ' ' || '\t')
+        {
+            continue;
+        }
+        else if ( byte == '|' )
+        {
+            fgetpos( stream, &pos );
+            byte = get_next_byte( stream );
+            if ( byte == '|' )      //OR command
+            {
+                break;
+            }
+            else
+            {
+                fsetpos( stream, &pos );
+                command = add_command_pipe( get_next_byte, stream, command );
+            }
+        }
+        else
+        {
+            break;
+        }
+    }
+    return command;
+}
+    
+
+
+
 
 /////////////       COMMAND STREAM STRUCT AND FUNCTIONS     /////////////
 
