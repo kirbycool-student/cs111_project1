@@ -341,13 +341,13 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
             if (next_byte == '|')
             {
                 type = OR_COMMAND;
+                prev_command = add_command_normal(get_next_byte, stream, type, prev_command);
             }
             else
             {
-                type = PIPE_COMMAND;
                 fsetpos(stream, &pos);   //move the file pointer back
+                prev_command = add_command_pipe(get_next_byte, stream, prev_command);
             }
-            prev_command = add_command_pipe(get_next_byte, stream, prev_command);
         }
         else if (next_byte == '&')
         {
