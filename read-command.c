@@ -10,11 +10,16 @@
 #include <stdbool.h>    //for boolean flags
 #include <ctype.h>      //for isalnum, isspaces, etc
 
+/////////////       GENERAL NOTES     /////////////
+
+// add_command_sequence adds a complete command
+// add_command_normal adds a high level AND/OR command
+
 /////////////       FUNCTION PROTOTYPES     /////////////
 
-bool is_word_char( char c );
-char skip_comment( int (*get_next_byte) (void *), void *stream );
-command_t traverse_stream( command_t head, bool *subtree_complete );
+bool is_word_char( char c );      //returns true if legal word char
+char skip_comment( int (*get_next_byte) (void *), void *stream );   //gets bytes until newline
+command_t traverse_stream( command_t head, bool *subtree_complete );    //returns ptr to high lvl AND/OR in tree, and nullifies tree ptrs
 
 command_t add_command_simple( int (*get_next_byte) (void *), void *stream );
 command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, bool subshell );
@@ -208,7 +213,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
             word_size = default_word_size;
             word = (char*) malloc( sizeof(char) * word_size );
             word[0] = '\0';
-            input_flag = false;
+            input_flag = true;
             end_word_flag = false;
         }
         else if ( next_byte == '>' )
