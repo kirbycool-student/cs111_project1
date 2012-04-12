@@ -66,6 +66,7 @@ char skip_comment( int (*get_next_byte) (void *), void *stream)
      return byte;
 }
 
+//TODO: add free function to traverse trees and free memory
 command_t traverse_stream( command_t head, bool *subtree_complete )
 {
     command_t command_ptr;
@@ -81,6 +82,7 @@ command_t traverse_stream( command_t head, bool *subtree_complete )
             command_ptr = traverse_stream(head->u.command[0],subtree_complete);
             if( *subtree_complete )
             {
+                free(head->u.command[0]);
                 head->u.command[0] = NULL;
             }
             *subtree_complete = false;
@@ -91,6 +93,7 @@ command_t traverse_stream( command_t head, bool *subtree_complete )
             command_ptr = traverse_stream(head->u.command[1],subtree_complete);
             if( *subtree_complete )
             {
+                free(head->u.command[1]);
                 head->u.command[1] = NULL;
             }
             *subtree_complete = true;
@@ -109,6 +112,7 @@ command_t traverse_stream( command_t head, bool *subtree_complete )
             command_ptr = traverse_stream(head->u.subshell_command,subtree_complete);
             if( *subtree_complete )
             {
+                free(head->u.subshell_command);
                 head->u.subshell_command = NULL;
             }
             *subtree_complete = true;
