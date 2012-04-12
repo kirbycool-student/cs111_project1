@@ -654,10 +654,17 @@ command_t read_command_stream (command_stream_t s)
     //fprintf(stdout,"beginning read_command_stream\n");//TODO:remove debugging print
     bool tree_complete;
     command_t command_ptr;
+    if( s->head == NULL)
+    {
+        return NULL;
+    }
     command_ptr = traverse_stream( s->head, &tree_complete );
-    if ( tree_complete ) 
+    if ( tree_complete )
     {   
-        free(s->head);
+        if ( s->head->type != SIMPLE_COMMAND) 
+        {   
+            free(s->head);
+        }
         s->head = NULL;
     }
     return command_ptr;
