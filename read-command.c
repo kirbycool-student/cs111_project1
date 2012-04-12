@@ -433,7 +433,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
                 else
                 {
                     type = SEQUENCE_COMMAND;
-                    prev_command = add_command_normal(get_next_byte, stream, type, prev_command);
+                    prev_command = add_command_sequence(get_next_byte, stream, prev_command);
                 }
             }
         }
@@ -519,8 +519,8 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
 
 command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command_t prev_command )
 {
-    if( prev_command->type != SIMPLE_COMMAND ||
-         prev_command->type != SUBSHELL_COMMAND ||
+    if( prev_command->type != SIMPLE_COMMAND &&
+         prev_command->type != SUBSHELL_COMMAND &&
          prev_command->type != PIPE_COMMAND)
     {
         fprintf(stderr,"%d: Pipe command not preceeded by simple command or subshell command.\n", error_line_number);
