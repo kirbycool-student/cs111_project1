@@ -13,7 +13,11 @@
 /////////////       GENERAL NOTES     /////////////
 
 // add_command_sequence adds a complete command
-// add_command_normal adds a high level AND/OR command
+// add_command_normal adds an AND/OR command
+
+/////////////       GENERAL TODO     /////////////
+// generate additional test cases
+// make sure that error_line_number increments correctly
 
 /////////////       FUNCTION PROTOTYPES     /////////////
 
@@ -448,7 +452,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
                 }
             }
         }
-        else if (next_byte == ';')  //TODO: optional semicolon for statements
+        else if (next_byte == ';')  //TODO: optional semicolon for complete statements
         {
             type = SEQUENCE_COMMAND;
             prev_command = add_command_sequence(get_next_byte, stream, prev_command); 
@@ -635,7 +639,8 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
 
     command_t right_command = add_command_simple( get_next_byte, stream);
     fgetpos( stream, &pos);
-    for( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream))
+    
+    for( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream))   //pipe lookahead
     {
         if ( byte == ' ' || byte == '\t')
         {
@@ -678,7 +683,8 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
             }
             else
             {
-                //TODO: some error
+                fprintf(stderr,"%d:'& not followed by another '&'.\n", error_line_number);
+                exit(1);
             }
         }
         else if ( byte == '|' )
@@ -691,7 +697,8 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
             }
             else
             {
-                //TODO: some error
+                fprintf(stderr,"%d:'| not followed by another '|'.\n", error_line_number);
+                exit(1);
             }
         }
         else if ( byte =='\n' )
