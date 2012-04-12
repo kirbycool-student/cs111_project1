@@ -224,7 +224,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
                     words[words_index] = word;
                 }
             }
-            fsetpos(stream, &pos);
+            fseek(stream, -1, SEEK_CUR);
             break;
         }
         else if ( next_byte == '<' )
@@ -391,7 +391,6 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
         else if (next_byte == '\n')
         {
             error_line_number++;
-            fgetpos(stream, &pos);
             for (next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream))
             {
                 if (next_byte == '#')
@@ -415,6 +414,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
                 }
                 else
                 {
+                    fseek( stream, -1, SEEK_CUR);
                     break;
                 }
             }
@@ -425,7 +425,6 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
             }
             else
             {
-                fsetpos( stream, &pos );
                 if (prev_command->type == 999)
                 {
                     prev_command = add_command_simple(get_next_byte, stream);
@@ -535,9 +534,9 @@ command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command
     char byte;
     fpos_t pos;
     fgetpos( stream, &pos);
-    for ( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream))
+    for( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream))
     {
-        if ( byte == ' ' || '\t')
+        if ( byte == ' ' || byte == '\t')
         {
             continue;
         }
@@ -571,12 +570,39 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
     command->type = SEQUENCE_COMMAND;
 
 
-    fpos_t pos;
-    command_t simple_command = add_command_simple( get_next_byte, stream);
-    fgetpos( stream, &pos );
-    command_t pipe_command = add_command_pipe( get_next_byte, stream, simple_command); 
-    fgetpos( stream, &pos );
     char byte;
+    fpos_t pos;
+
+    command_t right_command = add_command_simple( get_next_byte, stream);
+    fgetpos( stream, &pos);
+    for( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream))
+    {
+        if ( byte == ' ' || byte == '\t')
+        {
+            continue;
+        }
+        else if ( byte == '|' )
+        {
+            fgetpos( stream, &pos );
+            byte = get_next_byte( stream );
+            if ( byte == '|' )      //OR command
+            {
+                break;
+            }
+            else
+            {
+                right_command = add_command_pipe( get_next_byte, stream, command );
+                break;
+            }
+        }
+        else
+        {
+            fseek( stream, -1, SEEK_CUR );
+            break;
+        }
+    }
+         
+    
     enum command_type type;
     fgetpos( stream, &pos );
     for ( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream))
@@ -587,7 +613,7 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
             if ( byte == '&')
             {
                 type == AND_COMMAND;
-                command->u.command[1] = add_command_normal( get_next_byte, stream,type, pipe_command);
+                command->u.command[1] = add_command_normal( get_next_byte, stream,type, right_command);
             }
             else
             {
@@ -600,7 +626,7 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
             if ( byte == '|' )
             {
                 type = OR_COMMAND;
-                command->u.command[1] = add_command_normal( get_next_byte, stream, type, pipe_command);
+                command->u.command[1] = add_command_normal( get_next_byte, stream, type, right_command);
             }
             else
             {
@@ -610,7 +636,8 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
         else if ( byte =='\n' )
         {
             fseek(stream, -1, SEEK_CUR);
-            command->u.command[1] = pipe_command;
+            command->u.command[1] = right_command;
+            break;
         }
     }
     return command;
