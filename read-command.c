@@ -324,6 +324,11 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
         }
 
     }
+    if ( words[0]  == NULL )
+    {
+        fprintf(stderr,"%d: Creating simple command with no first word.\n", error_line_number);
+        exit(1);
+    }
     command->u.word = words;
     return command;
 }    
@@ -358,7 +363,10 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
         {
             if (subshell)
             {
-                break;
+                command_t command = malloc( sizeof(struct command) );
+                command->type = SUBSHELL_COMMAND;
+                command->u.subshell_command = prev_command;
+                return command;
             }
             else    //error
             {
@@ -470,10 +478,8 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
     }
     if ( subshell )
     {
-        command_t command = malloc( sizeof(struct command) );
-        command->type = SUBSHELL_COMMAND;
-        command->u.subshell_command = prev_command;
-        return command;
+        fprintf(stderr,"%d: Subshell was never closed with ')'.\n", error_line_number);
+        exit(1);
     }
     else
     {
