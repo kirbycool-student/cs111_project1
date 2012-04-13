@@ -84,10 +84,7 @@ command_t traverse_stream( command_t head, bool *subtree_complete )
             command_ptr = traverse_stream(head->u.command[0],subtree_complete);
             if( *subtree_complete )
             {
-                if (head->u.command[0]->type == SEQUENCE_COMMAND || head->u.command[0]->type == SUBSHELL_COMMAND )
-                {
-                    free(head->u.command[0]);
-                }
+                free(head->u.command[0]);
                 head->u.command[0] = NULL;
             }
             *subtree_complete = false;
@@ -98,10 +95,7 @@ command_t traverse_stream( command_t head, bool *subtree_complete )
             command_ptr = traverse_stream(head->u.command[1],subtree_complete);
             if( *subtree_complete )
             {
-                if (head->u.command[1]->type == SEQUENCE_COMMAND || head->u.command[1]->type == SUBSHELL_COMMAND )
-                {
-                    free(head->u.command[0]);
-                }
+                free(head->u.command[1]);
                 head->u.command[1] = NULL;
             }
             *subtree_complete = true;
@@ -120,10 +114,7 @@ command_t traverse_stream( command_t head, bool *subtree_complete )
             command_ptr = traverse_stream(head->u.subshell_command,subtree_complete);
             if( *subtree_complete )
             {
-                if (head->u.subshell_command->type == SEQUENCE_COMMAND || head->u.subshell_command->type == SUBSHELL_COMMAND )
-                {
-                    free(head->u.subshell_command);
-                }
+                free(head->u.subshell_command);
                 head->u.subshell_command = NULL;
             }
             *subtree_complete = true;
@@ -428,6 +419,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
             }
             if ( next_byte == EOF )
             {
+                
                 continue;
             }
             else if( ! isspace(next_byte) && ! is_word_char(next_byte))  //error
@@ -616,10 +608,6 @@ command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command
             break;
         }
     }
-    if( byte == EOF)
-    {
-        fseek( stream, -1, SEEK_CUR );
-    }
     return command;
 }
     
@@ -647,6 +635,7 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
             byte = get_next_byte( stream );
             if ( byte == '|' )      //OR command
             {
+                fseek( stream, -2, SEEK_CUR);
                 break;
             }
             else
@@ -756,4 +745,4 @@ command_t read_command_stream (command_stream_t s)
         s->head = NULL;
     }
     return command_ptr;
-}
+n
