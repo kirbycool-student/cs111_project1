@@ -3,4 +3,6 @@ CS 111 Lab 1A
 
 Authors: Taylor Lee and Kirby Cool
 
-Out code has no known limitations. 
+Our general desig is to build a command tree by parsing the shell commands, and to use a depth first search in read_command_stream to sequentially return commands pointers.
+
+Our code has no known limitations. 
