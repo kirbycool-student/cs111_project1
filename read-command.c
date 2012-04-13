@@ -187,17 +187,19 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
     int words_index = 0;                    //which word we are adding to
     char** words = (char**) malloc( sizeof(char*) * number_words );      //DONE: implement dynamic resizing string
     char* word = malloc( sizeof(char) * word_size);
-    word[0] = '\0';
     char next_byte;
     fpos_t pos;
     fgetpos(stream, &pos);
-    
+
+ 
     //TODO: implement I/O
     // change word implementation
     
     bool input_flag = false;
     bool output_flag = false;
     bool end_word_flag = false;
+
+
     
     for ( next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream) )
     {
@@ -319,7 +321,7 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
                 word_size *= 2;
                 words[words_index] = realloc( words[words_index], sizeof(char*) * word_size );
             }
-            strcat(word, &next_byte);                       
+            strncat(word, &next_byte,1);                       
         }
         else    //error: some strange character
         { 
@@ -466,6 +468,12 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
         }
         else if (next_byte == ';')  //TODO: optional semicolon for complete statements
         {
+	    if(prev_command->type == 999)
+            {
+                 fprintf(stderr,"%d: uninit with seq.\n", error_line_number);
+                exit(1);
+
+            }
             type = SEQUENCE_COMMAND;
             prev_command = add_command_sequence(get_next_byte, stream, prev_command); 
         }
@@ -497,7 +505,13 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
  
     command_t command = malloc(sizeof(struct command));
     command->type = type;
-    command->u.command[0] = prev_command;
+   	if( prev_command->type == 999)
+	{
+	 fprintf(stderr,"%d: tried to build norm w/ uninit left.\n", error_line_number);
+        exit(1);
+	
+	} 
+   command->u.command[0] = prev_command;
 
     fpos_t pos;
 
@@ -569,6 +583,11 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
             exit(1);
         }
     }
+    if(  command->u.command[0] == NULL || command->u.command[1] == NULL )
+    { fprintf(stderr,"%d:uninin right subtree in norm cNommand.\n", error_line_number);
+            exit(1);
+
+        }
     return command;
 }
 
@@ -576,9 +595,7 @@ command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command
 {
     if( prev_command->type != SIMPLE_COMMAND &&
          prev_command->type != SUBSHELL_COMMAND &&
-         prev_command->type != PIPE_COMMAND)
-    {
-        fprintf(stderr,"%d: Pipe command not preceeded by simple command or subshell command.\n", error_line_number);
+         prev_command->type != PIPE_COMMAND) { fprintf(stderr,"%d: Pipe command not preceeded by simple command or subshell command.\n", error_line_number);
         exit(1);
     }
 
