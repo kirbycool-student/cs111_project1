@@ -16,8 +16,12 @@
 // add_command_normal adds an AND/OR command
 
 /////////////       GENERAL TODO     /////////////
+
 // generate additional test cases
+    //EOF after other adds, not just pipe & simple
 // make sure that error_line_number increments correctly
+// call free_command in main.c
+// check input and output field strange characters
 
 /////////////       FUNCTION PROTOTYPES     /////////////
 
