@@ -145,20 +145,19 @@ command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t command
     
     pid_t pid;
     pid_t pid_array[num_commands];      //which processes are being run
-    int pid_index = 0;
 
     int i;
     int idx;
     int dependant_flag = 0;
     int run_flag = 0;
-    for( idx = 0; idx <= num_commands; idx++ )
+    for( idx = 0; idx < num_commands; idx++ )
     {
         command = commands[idx].command;
         last_command = command;
         dependant_flag = 0;
 
         //check for a dependancy
-        for ( i = 0; i <= pid_index; i++)
+        for ( i = 0; i < idx; i++)
         {
             if ( dep_graph[idx][i] != 0 )
             {
@@ -185,15 +184,23 @@ command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t command
                 execute_command( command, 0 );
                 exit(0);
             default:
-                pid_array[pid_index] = pid;
-                pid_index++;
+                pid_array[idx] = pid;
                 continue;
         };
     }
 
-    for ( i = 0; i <= pid_index; i++)
+    for ( i = 0; i < num_commands; i++)
     {
-        waitpid( pid_array[pid_index], &(command->status), 0 );
+        if ( pid_array[i] != 0 )
+        {
+            //wait for the process to finish    
+            waitpid( pid_array[i], &(command->status), 0 );
+            //remove dependancies on the process
+            for ( idx = 0; idx < num_commands; idx++ )
+            {
+                dep_graph[idx][i] = 0;
+            }
+        }
     }
 
     if ( run_flag == 1 )
