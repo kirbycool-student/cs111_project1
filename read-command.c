@@ -791,7 +791,8 @@ command_t read_command_stream (command_stream_t s)
     // if last element, clean up tree
     if ( tree_complete )
     {   
-        if ( s->head->type != SIMPLE_COMMAND) 
+        // only free if empty sequence or subshell
+        if ( s->head->type == SEQUENCE_COMMAND || s->head->type == SUBSHELL_COMMAND ) 
         {   
             free(s->head);
         }

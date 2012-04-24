@@ -47,7 +47,7 @@ execute_command (command_t c, int time_travel)
                     {
                         fprintf(stderr,"input open failed!");
                     }
-                    dup2(fd_input, 0);// make stdin go to file
+                    dup2(fd_input, 0);  // make stdin go to file
                     close(fd_input);
                 }
                 //check command output
@@ -78,14 +78,14 @@ execute_command (command_t c, int time_travel)
                 break;
         }
     }
-    else if (c->type == AND_COMMAND || c->type == OR_COMMAND)
+    else if ( c->type == AND_COMMAND || c->type == OR_COMMAND )
     {
         //execute left subtree
         execute_command(c->u.command[0],time_travel);
-        if(c->type == AND_COMMAND)
+        if (c->type == AND_COMMAND)
         {
             //if true, execute right subtree
-            if (c->u.command[0]->status == 0)
+            if ( c->u.command[0]->status == 0 )
             {
                 execute_command(c->u.command[1],time_travel);
                 c->status = c->u.command[1]->status;
@@ -98,7 +98,7 @@ execute_command (command_t c, int time_travel)
         else    //c->type == OR_COMMAND
         {
             // OR is opposite of AND
-            if (c->u.command[0]->status != 0)
+            if ( c->u.command[0]->status != 0 )
             {
                 execute_command(c->u.command[1],time_travel);
                 c->status = c->u.command[1]->status;
@@ -109,6 +109,56 @@ execute_command (command_t c, int time_travel)
             }
         }
     }
-    //TODO: implement pipe    
+    else if ( c->type == PIPE_COMMAND )
+    {
+        int pipe_fd[2];
+        
+        pipe(pipe_fd);
+        
+        switch (pid = fork())
+        {
+            case -1:
+                // fork() has failed 
+                fprintf(stderr,"fork failed!");
+                break;
+                
+            case 0:     //child
+            
+                    //close read end
+                close(pipe_fd[0]);
+                    // send stdout to pipe     
+                dup2(pipe_fd[1], 1);                 
+                     
+                    //execute left command
+                execute_command(c->u.command[0],time_travel);
+                    //close write end
+                close(pipe_fd[1]);   
+                break;
+                
+            default:    //parent
+                            
+                    //close write end
+                close(pipe_fd[1]);
+                    // stdin from pipe     
+                dup2(pipe_fd[0], 0);    
+      
+                
+                    //wait for left command to finish
+                waitpid(pid,&(c->status),0);     
+                    //execute right command
+                execute_command(c->u.command[1],time_travel);
+                    //close read end
+                close(pipe_fd[0]);
+                
+                c->status = c->u.command[1]->status;
+                break;
+        }  
+        
+    }
+    else    //should never reach here
+    {
+        fprintf(stderr,"Improper command type to execute.\n");
+        exit(1);
+    }
     return;
 }
