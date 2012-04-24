@@ -36,9 +36,20 @@ get_next_byte (void *stream)
 }
 
 // traverse high lvl command to prep io for dependency graph
-void consolidate_io (high_lvl_command_t)
+void consolidate_io (command_t command, char** inputs, char** outputs)
 {
-    return;
+	switch(command->type)
+	{
+		case SIMPLE_COMMAND:
+			
+		case SUBSHELL_COMMAND:
+			consolidate_io(command->u.subshell_command,inputs,outputs);
+			break;
+		default:
+			consolidate_io(command->u.command[0],inputs,outputs);
+			consolidate_io(command->u.command[1],inputs,outputs);
+			break;
+	}
 };
 
 command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t commands, int num_commands );
@@ -113,7 +124,9 @@ main (int argc, char **argv)
     for (k = 0; (command = read_command_stream (command_stream)); k++)
     {
             command_list[k].command = command;
-            consolidate_io(command_list[k]);
+            consolidate_io(command_list[k].command,
+			command_list[k].inputs,
+			command_list[k].outputs);
     } 
     
     
