@@ -41,7 +41,7 @@ void consolidate_io (high_lvl_command_t)
     return;
 };
 
-command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t* commands, int num_commands );
+command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t commands, int num_commands );
 
 int
 main (int argc, char **argv)
@@ -82,7 +82,7 @@ main (int argc, char **argv)
 	int num_commands = 0;    
 	while ((command = read_command_stream (command_stream)))
     {
-        number_commands++;
+        num_commands++;
         if (print_tree)
         {
             printf ("# %d\n", command_number++);
@@ -106,7 +106,7 @@ main (int argc, char **argv)
     
 /**************** time travel logic **************/
     //define and allocate array of high lvl commands
-    high_lvl_command_t command_list = malloc(sizeof(struct high_lvl_command) * num_hl_commands);
+    high_lvl_command_t command_list = malloc(sizeof(struct high_lvl_command) * num_commands);
     
     int k;
     //populate high lvl commands with command ptrs and input/output lists
@@ -118,14 +118,14 @@ main (int argc, char **argv)
     
     
     //set dependency graph
-    int dep_graph[number_commands][number_commands];
-    last_command = execute_command_parallel ( (int**) dep_graph, command_list, nu_commands );
+    int dep_graph[num_commands][num_commands];
+    last_command = execute_command_parallel ( (int**) dep_graph, command_list, num_commands );
 
 
     return print_tree || !last_command ? 0 : command_status (last_command);
 }
 
-command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t* commands, int num_commands )
+command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t commands, int num_commands )
 {
     command_t command;
     command_t last_command;
@@ -135,11 +135,12 @@ command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t* comman
     int pid_index = 0;
 
     int i;
+    int idx;
     int dependant_flag = 0;
     int run_flag = 0;
-    for( idx=0; idx <= num_commands; idx++ )
+    for( idx = 0; idx <= num_commands; idx++ )
     {
-        command = commands[idx]
+        command = commands[idx].command;
         last_command = command;
         dependant_flag = 0;
 
@@ -157,7 +158,7 @@ command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t* comman
         }
         run_flag = 1;
         // unset any dependants on this process 
-        for ( i = idx; i < number_commands; i++ )
+        for ( i = idx; i < num_commands; i++ )
         {
             dep_graph[i][idx] = 0;
         }
