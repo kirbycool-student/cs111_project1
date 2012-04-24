@@ -21,7 +21,6 @@
 
 // generate additional test cases
     //EOF after other adds, not just pipe & simple
-// make sure that error_line_number increments correctly
 
 /////////////       FUNCTION PROTOTYPES     /////////////
 
