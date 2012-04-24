@@ -5,15 +5,12 @@
 
 #include <error.h>
 #include <stdio.h>
-#include <stdlib.h>
-#include <unistd.h>
-#include <sys/wait.h>
-#include <sys/types.h>
-#include <sys/stat.h>
-#include <fcntl.h>
-
-/* FIXME: You may need to add #include directives, macro definitions,
-   static function definitions, etc.  */
+#include <stdlib.h>     //exit
+#include <unistd.h>     //execvp & fork
+#include <sys/wait.h>   //waitpid
+#include <sys/types.h>  //
+#include <sys/stat.h>   //  } all needed for open
+#include <fcntl.h>      //
 
 int
 command_status (command_t c)
@@ -21,11 +18,16 @@ command_status (command_t c)
     return c->status;
 }
 
+//TODO: implement time travel
 void
 execute_command (command_t c, int time_travel)
 {
     pid_t pid;
     
+    // command hasn't returned yet, default
+    c->status = -1;
+    
+    // first case is simple command
     if (c->type == SIMPLE_COMMAND)
     {
         switch (pid = fork())
@@ -70,11 +72,43 @@ execute_command (command_t c, int time_travel)
                 
             default:
                 // processed by the parent 
-                //TODO: this 1b implementation is linear
                 //wait for child to finish before continuing
-                waitpid(pid,NULL,0);
+                //store childs exit status
+                waitpid(pid,&(c->status),0);
                 break;
         }
-    }    
+    }
+    else if (c->type == AND_COMMAND || c->type == OR_COMMAND)
+    {
+        //execute left subtree
+        execute_command(c->u.command[0],time_travel);
+        if(c->type == AND_COMMAND)
+        {
+            //if true, execute right subtree
+            if (c->u.command[0]->status == 0)
+            {
+                execute_command(c->u.command[1],time_travel);
+                c->status = c->u.command[1]->status;
+            }
+            else
+            {
+                c->status = 1;
+            }
+        }
+        else    //c->type == OR_COMMAND
+        {
+            // OR is opposite of AND
+            if (c->u.command[0]->status != 0)
+            {
+                execute_command(c->u.command[1],time_travel);
+                c->status = c->u.command[1]->status;
+            }
+            else
+            {
+                c->status = 0;
+            }
+        }
+    }
+    //TODO: implement pipe    
     return;
 }

@@ -399,7 +399,7 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
         }
         else if (next_byte == '&')
         {
-            //look at next byte for or command, if not command is pipe
+            //look at next byte for and command, if not then error
             next_byte = get_next_byte(stream);
             if (next_byte == '&')
             {
@@ -685,6 +685,7 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
             byte = get_next_byte( stream );
             if ( byte == '|' )      //OR command
             {
+                fseek( stream, -2, SEEK_CUR );  //go back 2 for ||
                 break;
             }
             else
