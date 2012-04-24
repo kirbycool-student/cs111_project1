@@ -4,9 +4,14 @@
 #include <error.h>
 #include <getopt.h>
 #include <stdio.h>
+
 #include <stdlib.h>
+#include <unistd.h>
+#include <sys/types.h>
+#include <sys/wait.h>
 
 #include "command.h"
+#include "command-internals.h"
 
 struct high_lvl_command
 {
@@ -35,6 +40,9 @@ void consolidate_io(char **input, char**output)
 {
     return;
 };
+
+command_t execute_command_parallel ( int** dep_graph, command_stream_t stream, int number_commands );
+
 
 int
 main (int argc, char **argv)
@@ -87,20 +95,82 @@ main (int argc, char **argv)
     }
     
     //TODO:figure out how this whole thing will work???
-    while ((command = read_command_stream (command_stream)))
+	 int number_commands = 0;    
+	while ((command = read_command_stream (command_stream)))
     {
+        number_commands++;
         if (print_tree)
         {
             printf ("# %d\n", command_number++);
             print_command (command);
             free_command(command);    //unallocate all commands beneath this one
         }
-        else
+        else if (!time_travel)
         {
             last_command = command;
             execute_command (command, time_travel);
         }
+        else
+        {
+            continue;
+        }
     }
+      
+    /******** time travel logic **************/
+    
+    
+    //set dependency graph
+    int dep_graph[number_commands][number_commands];
+    last_command = execute_command_parallel ( (int**) dep_graph, command_stream, number_commands );
+
 
     return print_tree || !last_command ? 0 : command_status (last_command);
+}
+
+command_t execute_command_parallel ( int** dep_graph, command_stream_t stream, int number_commands )
+{
+    command_t command;
+    command_t last_command;
+    
+    pid_t pid;
+    pid_t pid_array[number_commands];
+    int pid_index = 0;
+
+    int idx = 0;
+    int i;
+    int dependant_flag = 0;
+    while( (command = read_command_stream(stream)) )
+    {
+        last_command = command;
+        dependant_flag = 0;
+        //check for a dependancy
+        for ( i = 0; i < idx + 1; i++)
+        {
+            if ( dep_graph[idx][i] != 0 )
+            {
+               dependant_flag = 1;
+            }
+        }
+        switch( pid = fork() )
+        {
+            case -1:
+                //some error
+                ;
+            case 0:
+                //execute the command
+                execute_command( command, 0 );
+                exit(0);
+            default:
+                pid_array[pid_index] = pid;
+                pid_index++;
+                continue;
+        };
+    }
+
+    for ( i = 0; i <= pid_index; i++)
+    {
+        waitpid( pid_array[pid_index], &(command->status), 0 );
+    }
+
+    return last_command;  
 }
