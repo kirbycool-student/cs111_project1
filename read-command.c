@@ -12,16 +12,16 @@
 
 /////////////       GENERAL NOTES     /////////////
 
-// add_command_sequence adds a complete command
+// add_command_sequence adds a sequence command
 // add_command_normal adds an AND/OR command
+// add_command_subshell adds a complete command
+// add_command_simple adds a simple command
 
 /////////////       GENERAL TODO     /////////////
 
 // generate additional test cases
     //EOF after other adds, not just pipe & simple
 // make sure that error_line_number increments correctly
-// call free_command in main.c
-// check input and output field strange characters
 
 /////////////       FUNCTION PROTOTYPES     /////////////
 
@@ -41,7 +41,8 @@ int error_line_number;  //for outputing the error line number
 
 /////////////       FUNCTION DEFINITIONS     /////////////
 
-bool is_word_char( char c )    //checks if c is in the subset of command word characters
+//checks if c is in the subset of command word characters
+bool is_word_char( char c )    
 {
     if( isalnum(c) )    //alphanumeric == letter or digits
     {
@@ -58,6 +59,7 @@ bool is_word_char( char c )    //checks if c is in the subset of command word ch
     }
 }
 
+// returns the newline or EOF that appear after the comment characters #
 char skip_comment( int (*get_next_byte) (void *), void *stream)
 {
     char byte;
@@ -76,7 +78,8 @@ char skip_comment( int (*get_next_byte) (void *), void *stream)
      return byte;
 }
 
-
+//traverses command tree unlinks the next command from the tree, returning a pointer to it
+//cleans and frees as it goes, caller only has to free commands that traverse_stream returns
 command_t traverse_stream( command_t head, bool *subtree_complete )
 {
     command_t command_ptr;
@@ -150,7 +153,8 @@ command_t traverse_stream( command_t head, bool *subtree_complete )
     }
 }
 
-int free_command(command_t head)   //frees high lvl and/ors
+//traverses command tree and frees all commands
+int free_command(command_t head)   //int because prototypes in command.h
 {
     if ( head->type == SIMPLE_COMMAND )
     {
@@ -173,9 +177,9 @@ int free_command(command_t head)   //frees high lvl and/ors
     }
 }
 
+//adds a simple command to the tree
 command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
 {
-    //fprintf(stdout,"beginning add_command_simple\n");   //TODO:remove debugging print
     command_t command = malloc(sizeof(struct command));
     command->type = SIMPLE_COMMAND;
     
@@ -192,15 +196,12 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
     fpos_t pos;
     fgetpos(stream, &pos);
 
- 
     //TODO: implement I/O
     // change word implementation
     
     bool input_flag = false;
     bool output_flag = false;
     bool end_word_flag = false;
-
-
     
     for ( next_byte = get_next_byte(stream); next_byte != EOF; next_byte = get_next_byte(stream) )
     {
@@ -225,10 +226,6 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
         }
         else if ( next_byte =='|' || next_byte == '&' || next_byte == ';' || next_byte == '\n')
         {   
-            if ( next_byte == '\n')
-            {
-                error_line_number++;
-            }
             if ( strlen( word ) != 0) 
             {
                 if (output_flag)
@@ -340,9 +337,9 @@ command_t add_command_simple( int (*get_next_byte) (void *), void *stream)
     return command;
 }    
         
+//adds a complete command to the tree, or subshell if subshell flag is true
 command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, bool subshell)
 {
-    //fprintf(stdout,"beginning add_command_subshell\n");//TODO:remove debugging print
     command_t prev_command = malloc(sizeof(struct command));
     prev_command->type = 999;
     char next_byte;
@@ -499,15 +496,15 @@ command_t add_command_subshell( int (*get_next_byte) (void *), void *stream, boo
     }
 }
 
+//adds an AND/OR command to the tree
 command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum command_type type, command_t prev_command)
 {
     // normal command is anything other than simple or subshell
- 
     command_t command = malloc(sizeof(struct command));
     command->type = type;
    	if( prev_command->type == 999)
 	{
-	    fprintf(stderr,"%d: Tried to build normal comman w/ uninitialized left subcommand.\n", error_line_number);
+	    fprintf(stderr,"%d: Tried to build normal command w/ uninitialized left subcommand.\n", error_line_number);
         exit(1);
 	
 	} 
@@ -592,6 +589,7 @@ command_t add_command_normal ( int (*get_next_byte) (void *), void *stream, enum
     return command;
 }
 
+//adds a pipe command to the tree
 command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command_t prev_command )
 {
     if( prev_command->type != SIMPLE_COMMAND &&
@@ -610,7 +608,13 @@ command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command
     for( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream))
     {
         if( byte == ' ' || byte == '\t' || byte == '\n' )
+        {   
+            if ( byte == '\n' )
+            {
+                error_line_number++;
+            }
             continue;
+        }
         else
             break;
     }
@@ -656,13 +660,13 @@ command_t add_command_pipe( int (*get_next_byte) (void *), void *stream, command
     }
     return command;
 }
-    
+
+//adds a sequence command to the tree
 command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, command_t prev_command )
 {
     command_t command = malloc( sizeof(struct command) );
     command->u.command[0] = prev_command;
     command->type = SEQUENCE_COMMAND;
-
 
     char byte;
     fpos_t pos;
@@ -698,7 +702,6 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
         }
     }
          
-    
     enum command_type type;
     fgetpos( stream, &pos );
     for ( byte = get_next_byte(stream); byte != EOF; byte = get_next_byte(stream))
@@ -746,17 +749,17 @@ command_t add_command_sequence( int (*get_next_byte) (void *), void *stream, com
 
 /////////////       COMMAND STREAM STRUCT AND FUNCTIONS     /////////////
 
+//head ptr is first level of command tree
 struct command_stream
 {
     command_t head;
 };
 
+// generates tree, and returns head ptr
 command_stream_t
 make_command_stream (int (*get_next_byte) (void *),
 		     void *get_next_byte_argument)
 {
-   // fprintf(stdout,"beginning make_command_stream\n");//TODO:remove debugging print
-
     command_stream_t command_stream = malloc( sizeof(command_stream) );
     command_t head_command = malloc( sizeof(struct command) );
     
@@ -774,16 +777,18 @@ make_command_stream (int (*get_next_byte) (void *),
     }
 }
 
+// returns next high lvl AND/OR command
 command_t read_command_stream (command_stream_t s)
 {
-    //fprintf(stdout,"beginning read_command_stream\n");//TODO:remove debugging print
     bool tree_complete;
     command_t command_ptr;
     if( s->head == NULL)
     {
         return NULL;
     }
+    //traverse_stream does actual work
     command_ptr = traverse_stream( s->head, &tree_complete );
+    // if last element, clean up tree
     if ( tree_complete )
     {   
         if ( s->head->type != SIMPLE_COMMAND) 

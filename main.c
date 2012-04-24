@@ -60,7 +60,7 @@ main (int argc, char **argv)
 	{
 	  printf ("# %d\n", command_number++);
 	  print_command (command);
-	//  free_command(command);//TODO:UNCOMMENT
+	  free_command(command);    //unallocate all commands beneath this one
 	}
       else
 	{
