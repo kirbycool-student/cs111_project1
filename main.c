@@ -7,6 +7,8 @@
 
 #include "command.h"
 
+int * dep_graph;
+
 static char const *program_name;
 static char const *script_name;
 
@@ -54,20 +56,36 @@ main (int argc, char **argv)
 
     command_t last_command = NULL;
     command_t command;
+
+    int number_commands = 0;
     while ((command = read_command_stream (command_stream)))
     {
+        number_commands++;
         if (print_tree)
         {
             printf ("# %d\n", command_number++);
             print_command (command);
             free_command(command);    //unallocate all commands beneath this one
         }
-        else
+        else if (!time_travel)
         {
             last_command = command;
             execute_command (command, time_travel);
         }
+        else
+        {
+            continue;
+        }
     }
+      
+    /******** time travel logic **************/
+    
+    dep_graph = malloc( sizeof(int) * number_commands );
+     
+
+
+
+
 
     return print_tree || !last_command ? 0 : command_status (last_command);
 }
