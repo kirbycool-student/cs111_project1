@@ -184,6 +184,10 @@ command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t command
     {
         if ( idx >= num_commands )
             break;
+        if ( dep_graph[idx][idx] == 1)      //process has already run
+        {
+            continue;
+        }
         command = commands[idx].command;
         last_command = command;
         dependant_flag = 0;
@@ -216,7 +220,9 @@ command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t command
                 execute_command( command, 0 );
                 exit(0);
             default:
+                dep_graph[idx][idx] = 1; //mark this command has run
                 pid_array[idx] = pid;
+                continue;
         };
     }
 
