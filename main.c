@@ -13,11 +13,16 @@
 #include "command.h"
 #include "command-internals.h"
 
+//TODO: dynamic resizing io arrays
+int default_io_num = 10000;
+int cur_inputs_index;
+int cur_outputs_index;
+
 struct high_lvl_command
 {
     command_t command;
-    char **inputs;
-    char **outputs;
+    char *inputs[10000];
+    char *outputs[10000];
 };
 
 static char const *program_name;
@@ -41,7 +46,21 @@ void consolidate_io (command_t command, char** inputs, char** outputs)
 	switch(command->type)
 	{
 		case SIMPLE_COMMAND:
-			
+			if(cur_inputs_index > default_io_num || cur_outputs_index > default_io_num)
+			{
+				fprintf(stderr,"toooooo big");
+			}
+			if(command->input != NULL)
+			{
+				inputs[cur_inputs_index] = command->input;
+				cur_inputs_index++;
+			}
+			if(command->output != NULL)
+			{
+				outputs[cur_outputs_index] = command->output;
+				cur_outputs_index++;
+			}				
+			break;	
 		case SUBSHELL_COMMAND:
 			consolidate_io(command->u.subshell_command,inputs,outputs);
 			break;
@@ -87,10 +106,13 @@ main (int argc, char **argv)
     command_t last_command = NULL;
     command_t command;
     
-    
+   //define and allocate array of high lvl commands
+	int num_hl_commands = 100;//default
+	high_lvl_command_t command_list = malloc(sizeof(struct high_lvl_command) * num_hl_commands);
+
+	int num_commands = 0;    
     
     //TODO:figure out how this whole thing will work???
-	int num_commands = 0;    
 	while ((command = read_command_stream (command_stream)))
     {
         num_commands++;
@@ -105,9 +127,24 @@ main (int argc, char **argv)
             last_command = command;
             execute_command (command, time_travel);
         }
-        else
+        else	//time travel
         {
-            continue;
+      //populate high lvl commands with command ptrs and input/output list
+			if( num_commands  >= num_hl_commands)
+			{
+	      		num_hl_commands += 100;
+                command_list = realloc(command_list, 
+						sizeof(struct high_lvl_command) * num_hl_commands);
+            }
+			command_list[num_commands].command = command;
+			cur_inputs_index = 0;
+			cur_outputs_index = 0;
+
+			consolidate_io(command_list[num_commands].command,
+				command_list[num_commands].inputs,
+				command_list[num_commands].outputs);
+
+			continue;
         }
     }
 
@@ -116,19 +153,6 @@ main (int argc, char **argv)
         exit(0);
     
 /**************** time travel logic **************/
-    //define and allocate array of high lvl commands
-    high_lvl_command_t command_list = malloc(sizeof(struct high_lvl_command) * num_commands);
-    
-    int k;
-    //populate high lvl commands with command ptrs and input/output lists
-    for (k = 0; (command = read_command_stream (command_stream)); k++)
-    {
-            command_list[k].command = command;
-            consolidate_io(command_list[k].command,
-			command_list[k].inputs,
-			command_list[k].outputs);
-    } 
-    
     
     //set dependency graph
     int dep_graph[num_commands][num_commands];
