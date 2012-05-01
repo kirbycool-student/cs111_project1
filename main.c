@@ -104,7 +104,6 @@ command_t execute_command_parallel ( int** dep_graph, command_stream_t stream, i
     pid_t pid_array[number_commands];
     int pid_index = 0;
 
-    int idx = 0;
     int i;
     int dependant_flag = 0;
     while( (command = read_command_stream(stream)) )
@@ -112,12 +111,16 @@ command_t execute_command_parallel ( int** dep_graph, command_stream_t stream, i
         last_command = command;
         dependant_flag = 0;
         //check for a dependancy
-        for ( i = 0; i < idx + 1; i++)
+        for ( i = 0; i <= pid_index; i++)
         {
             if ( dep_graph[idx][i] != 0 )
             {
-               dependant_flag = 1;
+                dependant_flag = 1;
             }
+        }
+        for ( i = idx; i < number_commands; i++ )
+        {
+            dep_graph[idx][i] = 0;
         }
         switch( pid = fork() )
         {
