@@ -150,7 +150,7 @@ main (int argc, char **argv)
 
     //if we're not in parallel mode we're done
     if( !time_travel )
-        exit(0);
+    	return print_tree || !last_command ? 0 : command_status (last_command);
     
 /**************** time travel logic **************/
     
