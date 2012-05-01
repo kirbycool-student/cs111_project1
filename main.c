@@ -41,8 +41,7 @@ void consolidate_io(char **input, char**output)
     return;
 };
 
-command_t execute_command_parallel ( int** dep_graph, command_stream_t stream, int number_commands );
-
+command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t* commands, int num_commands );
 
 int
 main (int argc, char **argv)
@@ -77,25 +76,10 @@ main (int argc, char **argv)
     command_t last_command = NULL;
     command_t command;
     
-    //define and allocate array of high lvl commands
-    int num_hl_commands = 100;//default
-    high_lvl_command_t command_list = malloc(sizeof(struct high_lvl_command) * num_hl_commands);
     
-    int k;
-    //populate high lvl commands with command ptrs and input/output lists
-    for (k = 0; (command = read_command_stream (command_stream)); k++)
-    {
-            if( k >= num_hl_commands)
-            {
-                num_hl_commands += 100;
-                command_list = realloc(command_list, sizeof(struct high_lvl_command) * num_hl_commands);
-            }
-            command_list[k].command = command;
-            consolidate_io(command_list[k].inputs,command_list[k].outputs);
-    }
     
     //TODO:figure out how this whole thing will work???
-	 int number_commands = 0;    
+	int num_commands = 0;    
 	while ((command = read_command_stream (command_stream)))
     {
         number_commands++;
@@ -115,33 +99,50 @@ main (int argc, char **argv)
             continue;
         }
     }
-      
-    /******** time travel logic **************/
+
+    //if we're not in parallel mode we're done
+    if( !time_travel )
+        exit(0);
+    
+/**************** time travel logic **************/
+    //define and allocate array of high lvl commands
+    high_lvl_command_t command_list = malloc(sizeof(struct high_lvl_command) * num_hl_commands);
+    
+    int k;
+    //populate high lvl commands with command ptrs and input/output lists
+    for (k = 0; (command = read_command_stream (command_stream)); k++)
+    {
+            command_list[k].command = command;
+            consolidate_io(command_list[k].inputs,command_list[k].outputs);
+    } 
     
     
     //set dependency graph
     int dep_graph[number_commands][number_commands];
-    last_command = execute_command_parallel ( (int**) dep_graph, command_stream, number_commands );
+    last_command = execute_command_parallel ( (int**) dep_graph, command_list, nu_commands );
 
 
     return print_tree || !last_command ? 0 : command_status (last_command);
 }
 
-command_t execute_command_parallel ( int** dep_graph, command_stream_t stream, int number_commands )
+command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t* commands, int num_commands )
 {
     command_t command;
     command_t last_command;
     
     pid_t pid;
-    pid_t pid_array[number_commands];
+    pid_t pid_array[num_commands];      //which processes are being run
     int pid_index = 0;
 
     int i;
     int dependant_flag = 0;
-    while( (command = read_command_stream(stream)) )
+    int run_flag = 0;
+    for( idx=0; idx <= num_commands; idx++ )
     {
+        command = commands[idx]
         last_command = command;
         dependant_flag = 0;
+
         //check for a dependancy
         for ( i = 0; i <= pid_index; i++)
         {
@@ -150,9 +151,15 @@ command_t execute_command_parallel ( int** dep_graph, command_stream_t stream, i
                 dependant_flag = 1;
             }
         }
+        if (dependant_flag == 1)
+        {
+            continue;
+        }
+        run_flag = 1;
+        // unset any dependants on this process 
         for ( i = idx; i < number_commands; i++ )
         {
-            dep_graph[idx][i] = 0;
+            dep_graph[i][idx] = 0;
         }
         switch( pid = fork() )
         {
@@ -174,6 +181,12 @@ command_t execute_command_parallel ( int** dep_graph, command_stream_t stream, i
     {
         waitpid( pid_array[pid_index], &(command->status), 0 );
     }
+
+    if ( run_flag == 1 )
+    {
+        last_command = execute_command_parallel( dep_graph, commands, num_commands );
+    }
+
 
     return last_command;  
 }
