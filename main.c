@@ -9,6 +9,7 @@
 #include <unistd.h>
 #include <sys/types.h>
 #include <sys/wait.h>
+#include <string.h>
 
 #include "command.h"
 #include "command-internals.h"
@@ -155,8 +156,14 @@ main (int argc, char **argv)
 /**************** time travel logic **************/
     
     //set dependency graph
-    int dep_graph[num_commands][num_commands];
-    last_command = execute_command_parallel ( (int**) dep_graph, command_list, num_commands );
+    int i;
+    int* dep_graph[num_commands];
+    for ( i = 0; i < num_commands; i++)
+    {
+        dep_graph[i] = malloc( sizeof(int) * num_commands );
+        memset(dep_graph[i], 0, num_commands);
+    }
+    last_command = execute_command_parallel ( dep_graph, command_list, num_commands );
 
 
     return print_tree || !last_command ? 0 : command_status (last_command);
