@@ -36,7 +36,7 @@ get_next_byte (void *stream)
 }
 
 // traverse high lvl command to prep io for dependency graph
-void consolidate_io(char **input, char**output)
+void consolidate_io (high_lvl_command_t)
 {
     return;
 };
@@ -113,7 +113,7 @@ main (int argc, char **argv)
     for (k = 0; (command = read_command_stream (command_stream)); k++)
     {
             command_list[k].command = command;
-            consolidate_io(command_list[k].inputs,command_list[k].outputs);
+            consolidate_io(command_list[k]);
     } 
     
     
