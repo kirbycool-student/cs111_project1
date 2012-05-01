@@ -50,6 +50,7 @@ void consolidate_io (command_t command, char** inputs, char** outputs)
 			if(cur_inputs_index > default_io_num || cur_outputs_index > default_io_num)
 			{
 				fprintf(stderr,"toooooo big");
+				exit(1);
 			}
 			if(command->input != NULL)
 			{
@@ -116,7 +117,6 @@ main (int argc, char **argv)
     //TODO:figure out how this whole thing will work???
 	while ((command = read_command_stream (command_stream)))
     {
-        num_commands++;
         if (print_tree)
         {
             printf ("# %d\n", command_number++);
@@ -133,8 +133,8 @@ main (int argc, char **argv)
       //populate high lvl commands with command ptrs and input/output list
 			if( num_commands  >= num_hl_commands)
 			{
-	      		num_hl_commands += 100;
-                command_list = realloc(command_list, 
+				num_hl_commands += 100;
+				command_list = realloc(command_list, 
 						sizeof(struct high_lvl_command) * num_hl_commands);
             }
 			command_list[num_commands].command = command;
@@ -144,9 +144,8 @@ main (int argc, char **argv)
 			consolidate_io(command_list[num_commands].command,
 				command_list[num_commands].inputs,
 				command_list[num_commands].outputs);
-
-			continue;
         }
+		num_commands++;
     }
 
     //if we're not in parallel mode we're done
