@@ -179,9 +179,11 @@ command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t command
     int i;
     int idx;
     int dependant_flag = 0;
-    int run_flag = 0;
+    int run_again_flag = 0;
     for( idx = 0; idx < num_commands; idx++ )
     {
+        if ( idx >= num_commands )
+            break;
         command = commands[idx].command;
         last_command = command;
         dependant_flag = 0;
@@ -192,13 +194,13 @@ command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t command
             if ( dep_graph[idx][i] != 0 )
             {
                 dependant_flag = 1;
+                run_again_flag = 1;
             }
         }
         if (dependant_flag == 1)
         {
             continue;
         }
-        run_flag = 1;
         // unset any dependants on this process 
         for ( i = idx; i < num_commands; i++ )
         {
@@ -215,7 +217,6 @@ command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t command
                 exit(0);
             default:
                 pid_array[idx] = pid;
-                continue;
         };
     }
 
@@ -233,7 +234,7 @@ command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t command
         }
     }
 
-    if ( run_flag == 1 )
+    if ( run_again_flag == 1 )
     {
         last_command = execute_command_parallel( dep_graph, commands, num_commands );
     }
