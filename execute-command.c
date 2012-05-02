@@ -30,6 +30,7 @@ execute_command (command_t c, int time_travel)
     // first case is simple command
     if (c->type == SIMPLE_COMMAND)
     {
+		int childstatus = 0;
         switch (pid = fork())
         {
             case -1:
@@ -74,8 +75,9 @@ execute_command (command_t c, int time_travel)
                 // processed by the parent 
                 //wait for child to finish before continuing
                 //store childs exit status
-                waitpid(pid,&(c->status),0);
-                break;
+                waitpid(pid,&childstatus,0);
+                c->status = childstatus;
+				break;
         }
     }
     else if ( c->type == AND_COMMAND || c->type == OR_COMMAND )
@@ -144,7 +146,7 @@ execute_command (command_t c, int time_travel)
       
                 
                     //wait for left command to finish
-                waitpid(pid,&(c->status),0);     
+                //waitpid(pid,&(c->status),0);     
                     //execute right command
                 execute_command(c->u.command[1],time_travel);
                     //close read end
