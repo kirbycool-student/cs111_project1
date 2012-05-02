@@ -200,11 +200,7 @@ command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t command
         {
             continue;
         }
-        // unset any dependants on this process 
-        for ( i = idx; i < num_commands; i++ )
-        {
-            dep_graph[i][idx] = 0;
-        }
+        
         switch( pid = fork() )
         {
             case -1:
@@ -223,6 +219,15 @@ command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t command
 
     for ( i = 0; i < num_commands; i++)
     {
+        if ( dep_graph[idx][idx] == 1 )
+        {
+            // unset any dependants on this process 
+            for ( idx = i; i < num_commands; i++ )
+            {
+                dep_graph[idx][i] = 0;
+            }
+        }
+
         if ( pid_array[i] != 0 )
         {
             //wait for the process to finish    
@@ -230,7 +235,8 @@ command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t command
             //remove dependancies on the process
             for ( idx = 0; idx < num_commands; idx++ )
             {
-                dep_graph[idx][i] = 0;
+                if ( idx != i )     //don't overwrite run files
+                    dep_graph[idx][i] = 0;
             }
         }
     }
