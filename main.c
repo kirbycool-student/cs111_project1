@@ -150,7 +150,7 @@ main (int argc, char **argv)
 							command_list[j].inputs) == 1 ||
 				common_word(command_list[i].inputs,
 							command_list[j].outputs) == 1 ||
-				common-word(command_list[i].outputs,
+				common_word(command_list[i].outputs,
 							command_list[j].outputs) == 1)
 			{
 				dep_graph[i][j] = 1;
