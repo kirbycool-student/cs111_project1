@@ -42,37 +42,12 @@ get_next_byte (void *stream)
 }
 
 // traverse high lvl command to prep io for dependency graph
-void consolidate_io (command_t command, char** inputs, char** outputs)
-{
-	switch(command->type)
-	{
-		case SIMPLE_COMMAND:
-			if(cur_inputs_index > default_io_num || cur_outputs_index > default_io_num)
-			{
-				fprintf(stderr,"toooooo big");
-				exit(1);
-			}
-			if(command->input != NULL)
-			{
-				inputs[cur_inputs_index] = command->input;
-				cur_inputs_index++;
-			}
-			if(command->output != NULL)
-			{
-				outputs[cur_outputs_index] = command->output;
-				cur_outputs_index++;
-			}				
-			break;	
-		case SUBSHELL_COMMAND:
-			consolidate_io(command->u.subshell_command,inputs,outputs);
-			break;
-		default:
-			consolidate_io(command->u.command[0],inputs,outputs);
-			consolidate_io(command->u.command[1],inputs,outputs);
-			break;
-	}
-};
+void consolidate_io (command_t command, char** inputs, char** outputs);
 
+// return 1 if arrays have words in common, 0 otherwise
+int common_word(char **arr1, char ** arr2);
+
+// recursive command to do bulk work of parallel execution
 command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t commands, int num_commands );
 
 int
@@ -155,15 +130,33 @@ main (int argc, char **argv)
 /**************** time travel logic **************/
     
     //set dependency graph
-    int i;
+    int i,j;
     int* dep_graph[num_commands];
     for ( i = 0; i < num_commands; i++)
     {
         dep_graph[i] = malloc( sizeof(int) * num_commands );
         memset(dep_graph[i], 0, num_commands);
     }
-    last_command = execute_command_parallel ( dep_graph, command_list, num_commands );
-
+	
+	for( i = 0; i < num_commands; i++ )
+	{
+		for(j = 0; j < i; j++)
+		{
+			if(j == i)
+			{
+				continue;
+			}
+			if(common_word(command_list[i].outputs,
+							command_list[j].inputs) == 1 ||
+				common_word(command_list[i].inputs,
+							command_list[j].outputs) == 1)
+			{
+				dep_graph[i][j] = 1;
+			}
+		}	
+	}
+    
+	last_command = execute_command_parallel ( dep_graph, command_list, num_commands );
 
     return print_tree || !last_command ? 0 : command_status (last_command);
 }
@@ -248,3 +241,65 @@ command_t execute_command_parallel ( int** dep_graph, high_lvl_command_t command
 
     return last_command;  
 }
+
+void consolidate_io (command_t command, char** inputs, char** outputs)
+{
+	switch(command->type)
+	{
+		case SIMPLE_COMMAND:
+			if(cur_inputs_index > default_io_num || cur_outputs_index > default_io_num)
+			{
+				fprintf(stderr,"toooooo big");
+				exit(1);
+			}
+			if(command->input != NULL)
+			{
+				inputs[cur_inputs_index] = command->input;
+				cur_inputs_index++;
+			}
+			if(command->output != NULL)
+			{
+				outputs[cur_outputs_index] = command->output;
+				cur_outputs_index++;
+			}				
+			break;	
+		case SUBSHELL_COMMAND:
+			consolidate_io(command->u.subshell_command,inputs,outputs);
+			break;
+		default:
+			consolidate_io(command->u.command[0],inputs,outputs);
+			consolidate_io(command->u.command[1],inputs,outputs);
+			break;
+	}
+};
+
+
+int common_word(char **arr1, char ** arr2)
+{
+	int i,j;
+	for(i = 0; i < default_io_num; i++)
+	{
+		if( arr1[i] == NULL)
+		{
+			break;
+		}
+		for(j = 0; j < default_io_num; j++)
+		{
+			if(arr2[j] == NULL)
+			{
+				break;
+			}
+			if(strcmp(arr1[i],arr2[j]) == 0)
+			{
+				return 1;
+			}
+		}
+	}
+	return 0;
+}
+
+
+
+
+
+
